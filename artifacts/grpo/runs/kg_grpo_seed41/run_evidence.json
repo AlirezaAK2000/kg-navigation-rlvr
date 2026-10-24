@@ -1,0 +1,91 @@
+{
+  "runtime_identifies_as_kaggle": false,
+  "cuda_available": false,
+  "model_name": "Qwen/Qwen3-1.7B",
+  "model_revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+  "configuration": {
+    "model_name": "Qwen/Qwen3-1.7B",
+    "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+    "train_hops": [
+      2,
+      3
+    ],
+    "eval_hops": [
+      2,
+      3,
+      4
+    ],
+    "num_generations": 4,
+    "microbatch": 1,
+    "gradient_accumulation": 4,
+    "unique_questions_per_update": 1,
+    "learning_rate": 5e-06,
+    "lora_r": 8,
+    "lora_alpha": 16,
+    "lora_dropout": 0.0,
+    "limits": {
+      "max_tool_calls": 8,
+      "max_neighbors": 16,
+      "max_observation_chars": 4000,
+      "max_turn_tokens": 128,
+      "max_completion_tokens": 1536,
+      "max_prompt_tokens": 1024,
+      "max_context_tokens": 3072
+    },
+    "smoke_steps": 2,
+    "full_steps": 30,
+    "save_steps": 10,
+    "evaluate_every_steps": 0,
+    "seed": 41
+  },
+  "installed_versions": {
+    "torch": "2.14.0",
+    "transformers": "4.48.1",
+    "trl": null,
+    "peft": null,
+    "accelerate": "1.10.0",
+    "bitsandbytes": null,
+    "datasets": "4.4.1",
+    "jmespath": "0.10.0",
+    "numpy": "1.26.4",
+    "pandas": "2.3.2",
+    "pyarrow": "22.0.0",
+    "tokenizers": "0.21.0",
+    "huggingface-hub": "0.36.2",
+    "matplotlib": "3.7.2",
+    "psutil": "5.9.0"
+  },
+  "hardware": {
+    "python": "3.11.5",
+    "torch": "2.14.0",
+    "cuda_runtime": null,
+    "visible_cuda_devices": 0,
+    "system_available_gib": 0.7559967041015625
+  },
+  "dataset_valid": true,
+  "source_files_unchanged": true,
+  "source_sha256": {
+    "config.json": "e24fc79f5c9defed3392d5d19a4bb0de3f7598836b4c6ff3303bde1f7ebf73a2",
+    "graph/entities.json": "278bdd95d9b1a37a4639824f0cc2b142f62fd7f9391d480cf3004ef4c8891b6c",
+    "graph/relations.json": "73628bbc1073d9e10de5e5be984e866a146f5800d1fb38fdc65c224554be16b2",
+    "graph/triples.tsv": "6caec7426b0b6094cbc13350ce70c59dd90e5e570ae16b995ab25670da781e7f",
+    "metadata/inspection_status.json": "a1ba67c19c9b5d1ac3ec5f973052456f2a57f42ede93e6c69e8125bd790d7b70",
+    "metadata/query_programs.jsonl": "00aa25099a6ffb4456fb5e344f2ce45e135cdba5e01a744e3caac03b38802850",
+    "metadata/report.md": "9184fb6864458481ab9c3ddcd121a1d4f9acbc96cbbcb73ada90e36096bdeef6",
+    "metadata/samples.md": "472e67ab121204e238f7bd7841d1481ae9fe784a03d3f781af67dfb719191aaf",
+    "metadata/statistics.json": "e614b8c9612581e877b92fa6efbdc7fc9e373f749815817649e2900b2bed9dd3",
+    "metadata/validation.json": "7eabcf1cbe7be858973a827ced776fc2c839bd2440e3efdebd177b2a1511ad8e",
+    "rl/test.jsonl": "332d4c648122f043895a2701bf3d456db7c95702709b83facc54a5dbe773e167",
+    "rl/train.jsonl": "816f645127e1984a0288616297fa1532463114613f0674c445638a080cc7936a",
+    "rl/validation.jsonl": "79668cdbd8d7a5542aadca173cadb05065e29135632c4a0fe01d4f401e3b0995"
+  },
+  "graph_tool_contract_check_passed": true,
+  "base_model_evaluation_performed": false,
+  "genuine_grpo_update_verified": false,
+  "smoke_result": null,
+  "full_training_result": null,
+  "adapter_reload_evaluated": false,
+  "peak_measured_gpu_allocated_gib": null,
+  "real_model_trajectory_examples": 0,
+  "gpu_dependent_checks_status": "UNVERIFIED \u2014 no successful CUDA training smoke in this run"
+}

@@ -1,0 +1,15 @@
+{
+  "notebook": "notebooks/01_dataset_eda.ipynb",
+  "notebook_sha256": "2d4082bec0fa4d3d2ea54fe6e7e0b626465bbed7c617909e6729aba3ca2810e2",
+  "full_dataset_execution": "26 code cells, zero errors or stderr outputs",
+  "pilot_dataset_execution": "26 code cells, zero errors; widgets disabled and alternate paths verified",
+  "inline_png_charts": 16,
+  "chart_qa": "All 16 exported charts decoded and visually inspected; component visibility and overview label spacing improved.",
+  "unit_tests": "50 passed",
+  "source_files_unchanged": 24,
+  "question_callback_smoke_test": "passed",
+  "question_export_complete_answer_and_witness_check": "passed",
+  "html_javascript_syntax": "passed for three standalone exports",
+  "browser_rendering_and_events": "Not verified: computer-use tool reported that no browser is available.",
+  "live_kaggle_execution": "Not performed; Kaggle paths/configuration are provided, with local alternate-path/no-widget execution verified."
+}

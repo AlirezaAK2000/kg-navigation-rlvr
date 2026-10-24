@@ -1,0 +1,459 @@
+{
+  "duplicates": {
+    "cross_split_instance_groups": 0,
+    "duplicate_question_texts": 0
+  },
+  "generation": {
+    "candidate_rejections": {
+      "2hop:empty_answer_set": 412,
+      "2hop:shorter_equivalent_answer_set": 295,
+      "3hop:empty_answer_set": 18,
+      "3hop:shorter_equivalent_answer_set": 9,
+      "4hop:empty_answer_set": 412,
+      "4hop:shorter_equivalent_answer_set": 313
+    },
+    "eligible_candidates_by_hop": {
+      "2": 2943,
+      "3": 2723,
+      "4": 1725
+    },
+    "heldout_program_ids": [],
+    "quotas": {
+      "test": {
+        "2": 7,
+        "3": 7,
+        "4": 6
+      },
+      "train": {
+        "2": 24,
+        "3": 23,
+        "4": 23
+      },
+      "validation": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      }
+    }
+  },
+  "graph": {
+    "entity_count": 2000,
+    "entity_counts_by_type": {
+      "city": 200,
+      "country": 50,
+      "field": 150,
+      "funder": 100,
+      "project": 300,
+      "publication": 400,
+      "researcher": 700,
+      "university": 100
+    },
+    "navigation_neighbor_list_sizes": {
+      "count": 7215,
+      "histogram": {
+        "1": 6133,
+        "2": 479,
+        "3": 201,
+        "4": 166,
+        "5": 125,
+        "6": 8,
+        "7": 103
+      },
+      "max": 7,
+      "mean": 1.3516285516285516,
+      "median": 1,
+      "p90": 2
+    },
+    "node_degree_undirected_unique": {
+      "count": 2000,
+      "histogram": {
+        "10": 34,
+        "11": 17,
+        "12": 18,
+        "13": 18,
+        "14": 9,
+        "15": 8,
+        "16": 6,
+        "17": 4,
+        "18": 2,
+        "19": 1,
+        "2": 532,
+        "3": 20,
+        "4": 737,
+        "5": 297,
+        "6": 100,
+        "7": 57,
+        "8": 106,
+        "9": 34
+      },
+      "max": 19,
+      "mean": 4.576,
+      "median": 4.0,
+      "p90": 8
+    },
+    "triple_count": 5000,
+    "triple_counts_by_relation": {
+      "authored_by": 411,
+      "based_in": 100,
+      "cites": 402,
+      "city_in_country": 200,
+      "collaborates_with": 220,
+      "contributes_to": 307,
+      "funded_by": 304,
+      "investigates": 303,
+      "led_by": 300,
+      "located_in_city": 100,
+      "partners_with": 28,
+      "produced_by": 400,
+      "publication_field": 400,
+      "specializes_in": 700,
+      "subfield_of": 125,
+      "works_at": 700
+    },
+    "weak_components": {
+      "count": 1,
+      "sizes": [
+        2000
+      ]
+    }
+  },
+  "overlap": {
+    "test__train": {
+      "shared_composition_paths": [
+        [
+          "authored_by",
+          "works_at"
+        ],
+        [
+          "authored_by",
+          "works_at",
+          "located_in_city",
+          "city_in_country"
+        ],
+        [
+          "cites",
+          "authored_by",
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "led_by",
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "works_at",
+          "located_in_city",
+          "city_in_country"
+        ]
+      ],
+      "shared_compositions": 6,
+      "shared_reference_entities": 1,
+      "shared_relation_operations": 9,
+      "shared_start_entities": 0
+    },
+    "test__validation": {
+      "shared_composition_paths": [
+        [
+          "cites",
+          "authored_by",
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "led_by",
+          "works_at",
+          "located_in_city"
+        ]
+      ],
+      "shared_compositions": 2,
+      "shared_reference_entities": 4,
+      "shared_relation_operations": 8,
+      "shared_start_entities": 0
+    },
+    "train__validation": {
+      "shared_composition_paths": [
+        [
+          "authored_by",
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "cites",
+          "authored_by",
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "led_by",
+          "works_at"
+        ],
+        [
+          "led_by",
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "produced_by",
+          "funded_by"
+        ],
+        [
+          "produced_by",
+          "funded_by",
+          "based_in",
+          "city_in_country"
+        ]
+      ],
+      "shared_compositions": 6,
+      "shared_reference_entities": 3,
+      "shared_relation_operations": 9,
+      "shared_start_entities": 0
+    }
+  },
+  "questions": {
+    "answer_set_sizes": {
+      "count": 100,
+      "histogram": {
+        "1": 93,
+        "2": 5,
+        "3": 2
+      },
+      "max": 3,
+      "mean": 1.09,
+      "median": 1.0,
+      "p90": 1
+    },
+    "branching_factors": {
+      "count": 100,
+      "histogram": {
+        "3.0": 2,
+        "3.7": 1,
+        "3.8": 2,
+        "4.0": 2,
+        "4.2": 2,
+        "4.5": 6,
+        "4.7": 2,
+        "5.0": 16,
+        "5.2": 3,
+        "5.3": 2,
+        "5.5": 6,
+        "5.7": 6,
+        "5.8": 7,
+        "6.0": 18,
+        "6.2": 2,
+        "6.3": 2,
+        "6.5": 6,
+        "6.7": 2,
+        "6.8": 2,
+        "6.9": 2,
+        "7.0": 4,
+        "7.3": 4,
+        "7.7": 1
+      },
+      "max": 7.666666666666667,
+      "mean": 5.612857142857143,
+      "median": 5.708333333333334,
+      "p90": 6.857142857142857
+    },
+    "compositions_per_split": {
+      "test": 9,
+      "train": 16,
+      "validation": 6
+    },
+    "count": 100,
+    "counts_by_split_and_hop": {
+      "test": {
+        "2": 7,
+        "3": 7,
+        "4": 6
+      },
+      "train": {
+        "2": 24,
+        "3": 23,
+        "4": 23
+      },
+      "validation": {
+        "2": 4,
+        "3": 3,
+        "4": 3
+      }
+    },
+    "most_common_answer_sets": [
+      {
+        "answers": [
+          "university_000039"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "city_000036"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "country_000000"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "country_000048"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "country_000028"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "city_000158"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "city_000004"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "funder_000032"
+        ],
+        "count": 2
+      },
+      {
+        "answers": [
+          "project_000028",
+          "project_000113",
+          "project_000203"
+        ],
+        "count": 2
+      },
+      {
+        "answers": [
+          "funder_000021"
+        ],
+        "count": 2
+      }
+    ],
+    "multi_answer_questions": 7,
+    "query_operation_counts": {
+      "authored_by": 34,
+      "based_in": 14,
+      "cites": 11,
+      "city_in_country": 35,
+      "funded_by": 22,
+      "inv:investigates": 6,
+      "inv:led_by": 2,
+      "inv:works_at": 2,
+      "led_by": 20,
+      "located_in_city": 58,
+      "produced_by": 19,
+      "works_at": 74
+    },
+    "questions_with_multiple_program_walks": 0,
+    "reference_tool_calls": {
+      "count": 100,
+      "histogram": {
+        "13": 2,
+        "15": 4,
+        "5": 33,
+        "7": 32,
+        "9": 29
+      },
+      "max": 15,
+      "mean": 7.36,
+      "median": 7.0,
+      "p90": 9
+    },
+    "shortest_answer_distances": {
+      "count": 109,
+      "histogram": {
+        "2": 41,
+        "3": 40,
+        "4": 28
+      },
+      "max": 4,
+      "mean": 2.8807339449541285,
+      "median": 3,
+      "p90": 4
+    },
+    "template_counts": {
+      "p02_author_employer:v1": 1,
+      "p02_author_employer:v2": 3,
+      "p02_author_employer:v3": 3,
+      "p02_funder_city:v2": 1,
+      "p02_funder_city:v3": 1,
+      "p02_funder_country:v2": 1,
+      "p02_funder_country:v3": 1,
+      "p02_leader_employer:v2": 2,
+      "p02_leader_employer:v3": 2,
+      "p02_publication_funder:v1": 5,
+      "p02_publication_funder:v2": 2,
+      "p02_publication_funder:v3": 3,
+      "p02_researcher_city:v1": 1,
+      "p02_researcher_city:v2": 3,
+      "p02_researcher_city:v3": 4,
+      "p02_university_projects:v1": 1,
+      "p02_university_projects:v2": 1,
+      "p03_author_city:v2": 2,
+      "p03_author_city:v3": 1,
+      "p03_cited_author_employer:v2": 2,
+      "p03_cited_author_employer:v3": 1,
+      "p03_field_universities:v1": 1,
+      "p03_field_universities:v3": 1,
+      "p03_funder_country:v2": 1,
+      "p03_leader_city:v1": 2,
+      "p03_leader_city:v2": 2,
+      "p03_leader_city:v3": 2,
+      "p03_publication_funder_city:v1": 2,
+      "p03_publication_funder_city:v2": 3,
+      "p03_publication_funder_city:v3": 1,
+      "p03_researcher_country:v1": 5,
+      "p03_researcher_country:v2": 1,
+      "p03_researcher_country:v3": 6,
+      "p04_author_country:v1": 4,
+      "p04_author_country:v2": 4,
+      "p04_author_country:v3": 5,
+      "p04_cited_author_city:v1": 3,
+      "p04_cited_author_city:v2": 2,
+      "p04_cited_author_city:v3": 3,
+      "p04_field_university_city:v1": 2,
+      "p04_field_university_city:v2": 1,
+      "p04_field_university_city:v3": 1,
+      "p04_leader_country:v1": 1,
+      "p04_leader_country:v2": 2,
+      "p04_leader_country:v3": 1,
+      "p04_publication_funder_country:v1": 1,
+      "p04_publication_funder_country:v3": 2
+    },
+    "unique_compositions": 19,
+    "unique_query_instances": 53
+  },
+  "schema_version": 1,
+  "seed": 1729,
+  "validation": {
+    "errors": [],
+    "pass_percentage": 100.0,
+    "passed": 100,
+    "question_count": 100,
+    "reproducibility_checked": true,
+    "reproducible": true,
+    "valid": true
+  },
+  "warnings": [
+    "Stored relation frequencies differ by more than 10x; inspect the ontology and query coverage.",
+    "Template-generated language is finite. Ordinary splits share grammar, facts, entities and compositions; they do not rule out memorization or template exploitation.",
+    "Relations used as distractors but not in the current question catalog: collaborates_with, contributes_to, partners_with, publication_field, specializes_in, subfield_of."
+  ]
+}

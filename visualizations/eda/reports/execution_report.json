@@ -1,0 +1,139 @@
+{
+  "seed": 41,
+  "dataset_path": "/Users/alirezaak/Documents/research/graph_rlvr/data",
+  "input_file_count": 13,
+  "source_files_unchanged": true,
+  "input_sha256": {
+    "config.json": "e24fc79f5c9defed3392d5d19a4bb0de3f7598836b4c6ff3303bde1f7ebf73a2",
+    "graph/entities.json": "278bdd95d9b1a37a4639824f0cc2b142f62fd7f9391d480cf3004ef4c8891b6c",
+    "graph/relations.json": "73628bbc1073d9e10de5e5be984e866a146f5800d1fb38fdc65c224554be16b2",
+    "graph/triples.tsv": "6caec7426b0b6094cbc13350ce70c59dd90e5e570ae16b995ab25670da781e7f",
+    "metadata/inspection_status.json": "a1ba67c19c9b5d1ac3ec5f973052456f2a57f42ede93e6c69e8125bd790d7b70",
+    "metadata/query_programs.jsonl": "00aa25099a6ffb4456fb5e344f2ce45e135cdba5e01a744e3caac03b38802850",
+    "metadata/report.md": "9184fb6864458481ab9c3ddcd121a1d4f9acbc96cbbcb73ada90e36096bdeef6",
+    "metadata/samples.md": "472e67ab121204e238f7bd7841d1481ae9fe784a03d3f781af67dfb719191aaf",
+    "metadata/statistics.json": "e614b8c9612581e877b92fa6efbdc7fc9e373f749815817649e2900b2bed9dd3",
+    "metadata/validation.json": "7eabcf1cbe7be858973a827ced776fc2c839bd2440e3efdebd177b2a1511ad8e",
+    "rl/test.jsonl": "332d4c648122f043895a2701bf3d456db7c95702709b83facc54a5dbe773e167",
+    "rl/train.jsonl": "816f645127e1984a0288616297fa1532463114613f0674c445638a080cc7936a",
+    "rl/validation.jsonl": "79668cdbd8d7a5542aadca173cadb05065e29135632c4a0fe01d4f401e3b0995"
+  },
+  "question_count": 2800,
+  "hop_categories": [
+    2,
+    3,
+    4
+  ],
+  "samples_per_hop": {
+    "2": 5,
+    "3": 5,
+    "4": 5
+  },
+  "core_valid_questions": 2800,
+  "full_validator_available": true,
+  "full_validator_valid": true,
+  "chart_count": 16,
+  "chart_pixel_dimensions": {
+    "01_entity_relation_counts.png": [
+      730,
+      1705
+    ],
+    "02_degree_and_components.png": [
+      561,
+      1835
+    ],
+    "03_relation_branching.png": [
+      925,
+      1835
+    ],
+    "04_institutional_coverage.png": [
+      535,
+      1835
+    ],
+    "05_hop_split_distribution.png": [
+      535,
+      1705
+    ],
+    "06_frequent_compositions.png": [
+      925,
+      1575
+    ],
+    "07_question_operation_usage.png": [
+      795,
+      1445
+    ],
+    "08_answer_characteristics.png": [
+      600,
+      1835
+    ],
+    "09_starting_entities.png": [
+      600,
+      1834
+    ],
+    "10_question_lengths.png": [
+      574,
+      1835
+    ],
+    "11_language_similarity.png": [
+      561,
+      1575
+    ],
+    "12_navigation_difficulty_by_hops.png": [
+      1055,
+      1835
+    ],
+    "13_frontier_profiles.png": [
+      561,
+      1835
+    ],
+    "14_hops_distance_and_cost.png": [
+      561,
+      1575
+    ],
+    "15_split_overlap.png": [
+      994,
+      1701
+    ],
+    "16_bounded_graph_preview.png": [
+      925,
+      1575
+    ]
+  },
+  "figures": [
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/01_entity_relation_counts.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/02_degree_and_components.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/03_relation_branching.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/04_institutional_coverage.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/05_hop_split_distribution.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/06_frequent_compositions.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/07_question_operation_usage.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/08_answer_characteristics.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/09_starting_entities.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/10_question_lengths.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/11_language_similarity.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/12_navigation_difficulty_by_hops.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/13_frontier_profiles.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/14_hops_distance_and_cost.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/15_split_overlap.png",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/figures/16_bounded_graph_preview.png"
+  ],
+  "html_files": [
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/html/entity_researcher_000042.html",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/html/graph_overview.html",
+    "/Users/alirezaak/Documents/research/graph_rlvr/visualizations/eda/html/question_q_001457.html"
+  ],
+  "question_visualization_id": "q_001457",
+  "question_visualization_complete_answers": true,
+  "browser_visual_and_event_check": "Not established by notebook execution; inspect exported HTML in a trusted browser.",
+  "widgets_available": true,
+  "widget_question_callback_checked": true,
+  "near_duplicate_candidate_pairs": 27471,
+  "near_duplicate_screen_exhaustive": false,
+  "dependency_versions": {
+    "pandas": "2.3.2",
+    "networkx": "3.1",
+    "matplotlib": "3.7.2",
+    "nbformat": "5.9.2",
+    "nbclient": "0.5.13"
+  }
+}

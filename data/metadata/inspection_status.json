@@ -1,0 +1,16 @@
+{
+  "standalone_html_files": [
+    "visualizations/entity_researcher_000042.html",
+    "visualizations/graph_overview.html",
+    "visualizations/index.html",
+    "visualizations/question_q_000201.html",
+    "visualizations/question_q_001240.html",
+    "visualizations/question_q_001457.html"
+  ],
+  "javascript_syntax": "passed (Node.js --check)",
+  "graph_projection_and_reference_path_tests": "passed",
+  "browser_visual_inspection": "blocked",
+  "reason": "Computer-use permissions are not granted; in-app browser is unavailable.",
+  "manual_entry_point": "visualizations/index.html",
+  "note": "Static syntax and data checks do not establish rendered appearance or browser interaction correctness."
+}
