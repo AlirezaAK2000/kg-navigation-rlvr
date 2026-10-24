@@ -133,6 +133,7 @@ invalid-action or path rewards. Acknowledgments do not expose correctness.
 | Full local pytest suite | **69 passed, 3 skipped**; skips are optional pinned-stack tests in the ordinary environment |
 | Isolated pinned-stack full suite | **72 passed in the isolated pinned environment**, including the 3 API checks; real TRL config/sampler/mask boundary, real Qwen BPE template, tiny CPU PEFT adapter save/reload |
 | Notebook execution | **14 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
+| Kaggle package setup regression suite | **3 passed**; reproduces missing TRL/bitsandbytes and version drift, verifies the section-1 gate and recovery instructions |
 | Graph and QA loading | Existing 2,000 entities, 5,000 triples and 2,800 questions validated in memory |
 | Source preservation | All original QA/conversational records unchanged; graph format migrated to Turtle |
 | Python/notebook syntax | Supporting modules and every code cell compile |
@@ -160,6 +161,17 @@ insufficient for sparse rewards. Diagnose real logs before increasing smoke
 sampling or changing public limits; full training does not follow a failed gate.
 
 ## Exact Kaggle execution procedure
+
+`INSTALL_DEPENDENCIES=False` skips installation; Kaggle's preinstalled packages
+are not assumed to match the pins. If setup (or section 5 in an older notebook)
+reports a mismatch, set the flag to `True`, rerun configuration and setup, wait
+for pip to finish, restart the Python kernel, then set the flag back to `False`
+and run from the beginning. Keep smoke/full training disabled to review only
+the vanilla baseline. A new session/image needs its own setup. The current
+notebook checks installed metadata for every requirements pin before importing
+the graph/ML backend, so this failure is reported in section 1. Kaggle documents
+its changing base environment and package installation in the
+[notebook guide](https://www.kaggle.com/docs/notebooks).
 
 1. Create a Kaggle Python 3.11/3.12 notebook and import
    `notebooks/02_grpo_training_kaggle.ipynb`. Select GPU T4 acceleration and enable

@@ -45,7 +45,12 @@ def assert_training_stack(require_cuda=True):
     mismatch = {name: {"expected": PINS[name], "actual": versions[name]} for name in names
                 if (versions[name] or "").split("+")[0] != PINS[name]}
     if mismatch:
-        raise RuntimeError("Pinned training stack mismatch; run setup in a fresh kernel: " + json.dumps(mismatch))
+        raise RuntimeError(
+            "Pinned training stack mismatch. In notebook section 1, set "
+            "INSTALL_DEPENDENCIES=True and rerun the configuration and setup cells. "
+            "After pip finishes, restart the Kaggle session/kernel, set "
+            "INSTALL_DEPENDENCIES=False, and run from the beginning. "
+            "Do not bypass this check: " + json.dumps(mismatch))
     import torch
     from trl import GRPOConfig, GRPOTrainer
     required = {"rollout_func", "processing_class", "peft_config"}

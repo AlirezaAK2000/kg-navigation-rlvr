@@ -18,6 +18,7 @@ for inspection; actual Protégé frontend behavior was not tested in this sessio
 | Source QA and conversation preservation | All original JSONL bytes unchanged |
 | EDA notebook | 22 code cells, zero errors, 15 statistical charts; no graph-renderer dependency |
 | GRPO notebook | 14 code cells, zero errors in CPU preflight; no graph-renderer dependency |
+| Kaggle setup regression tests | 3 passed; missing/mismatched packages stop before backend imports; matching packages and local CPU preflight are accepted |
 | Pretrained CUDA tool use, GRPO updates, VRAM and trained-adapter evaluation | Unverified; no CUDA GPU available |
 
 Each saved graph contains 2,000 entities and 5,000 navigation facts. Its complete

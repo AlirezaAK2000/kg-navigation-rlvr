@@ -60,7 +60,7 @@
     "statistics.py": "a871b1be31574d141277ffd1c2f431228f596cde6a1c3b4ff70bfb732bce1947",
     "training/__init__.py": "f972ccb5d764494cff3f8af24a1f4533b117e433be803e75419dd640fa59aaf7",
     "training/environment.py": "741dabecdf9059a7ef021cf2582124a98ed20608b92cda265f975223bef766f7",
-    "training/grpo.py": "43a94a89527ed1f2efb3569e983bf9c6aaf24967f2fbe137378208ee040f025e",
+    "training/grpo.py": "c52cbb39ccfc6787214b3b0d6561fb9fb5bf5e9fd07753109545b756e295f4fb",
     "training/rollouts.py": "c7508336668b32fd10f27872d7967e5d40004b583b63902378306ef1cd8894aa",
     "validators.py": "76af506b8431afccc08b9f2cf0d38fd7b99dc191e4adcda689ffa9bd399797a7"
   },
@@ -93,5 +93,14 @@
     "passed": 72,
     "skipped": 0,
     "includes_pinned_api_tests": 3
+  },
+  "kaggle_setup_regression": {
+    "tests_passed": 3,
+    "covers": [
+      "missing TRL/bitsandbytes and incompatible default Kaggle package versions fail in section 1 before backend import",
+      "matching version metadata is accepted",
+      "local CPU preflight remains available"
+    ],
+    "actual_kaggle_installation_performed": false
   }
 }

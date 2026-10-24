@@ -463,6 +463,16 @@ PEFT 0.19.0 was rejected after its real adapter construction failed on Torch 2.6
 the selected 0.18.1 adapter path was checked instead. Generation/inspection
 dependencies stay independent of the optional GPU stack.
 
+If an older notebook stops in section 5 with `Pinned training stack mismatch`,
+the installation step was skipped or did not complete. `INSTALL_DEPENDENCIES=False`
+does not install anything. Set it to `True`, rerun configuration and setup in
+section 1, wait for pip to finish, restart the Python kernel, then set it back
+to `False` and run from the beginning. A new Kaggle session/image needs its own
+dependency setup. The current notebook checks every pin in section 1 before
+importing the graph/ML backend, so missing TRL/bitsandbytes and version differences
+are reported there. For vanilla-baseline-only evaluation, use `RUN_BASELINE=True`,
+`RUN_SMOKE_TEST=False`, and `RUN_FULL_TRAINING=False`.
+
 The rollout integration deliberately uses `rollout_func` rather than
 `environment_factory`: the inspected TRL 1.8.0 native tool loop does not consult
 our episode's submission state before generating again. The custom adapter stops
