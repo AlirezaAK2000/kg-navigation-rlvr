@@ -1,7 +1,7 @@
 """Read-only EDA helpers. Optional pandas/networkx dependencies live in the EDA extra.
 
 No generation or on-disk validation utilities are called here: saved input files
-are never written. Public graph execution and the existing HTML renderer are reused.
+are never written. Public RDFLib-backed graph execution is reused.
 """
 
 from collections import Counter, defaultdict
@@ -21,7 +21,6 @@ from .graph_index import GraphIndex, execute
 from .ontology import program_end_type
 from .query_generator import instance_id
 from .validators import validate_dataset
-from .visualization import render_visualization
 
 REQUIRED = {"id", "question", "split", "start_entity", "answer_ids", "hop_count", "relation_path"}
 OPTIONAL = {"difficulty", "gold_entity_paths", "template_id", "program_id", "query_instance_id",
@@ -129,7 +128,7 @@ def graph_views(graph):
     simple = nx.DiGraph(stored)
     navigation = nx.DiGraph()
     navigation.add_nodes_from(stored.nodes)
-    navigation.add_edges_from((e, n) for e, rels in graph.adjacency.items() for neighbors in rels.values() for n in neighbors)
+    navigation.add_edges_from((e, n) for e in graph.entities for neighbors in graph.neighbor_map(e).values() for n in neighbors)
     entities = pd.DataFrame.from_dict(graph.entities, orient="index").rename_axis("entity_id").reset_index()
     entities["in_degree"] = entities.entity_id.map(dict(stored.in_degree()))
     entities["out_degree"] = entities.entity_id.map(dict(stored.out_degree()))
@@ -139,7 +138,7 @@ def graph_views(graph):
     triples = pd.DataFrame(graph.triples, columns=["head", "relation", "tail"])
     branch = pd.DataFrame([{"entity_id": e, "operation": r, "neighbor_count": len(ns),
                            "entity_type": graph.entities[e]["type"], "inverse": r.startswith("inv:")}
-                          for e, rels in graph.adjacency.items() for r, ns in rels.items()])
+                          for e in graph.entities for r, ns in graph.neighbor_map(e).items()])
     return stored, simple, navigation, entities, triples, branch
 
 
@@ -323,28 +322,6 @@ def question_html(graph, record, audit_row=None):
             f'<ol>{"".join(paths)}</ol><p>Branching {d["branching_factor"]:.2f} · available relations {d["relation_options_mean"]:.2f} '
             f'· query fanout {d["query_neighbors_mean"]:.2f} · distractor occurrences {d["distractor_count"]} '
             f'· reference calls {d["reference_tool_calls"]} · verification: <b>{status}</b></p></article>')
-
-
-def export_graph_view(graph, output, question=None, **kwargs):
-    """Adapt absent optional witness metadata in memory, then reuse the renderer."""
-    if question is not None:
-        question = dict(question)
-        result = execute(graph, question["start_entity"], question["relation_path"])
-        question.setdefault("gold_entity_paths", result.paths)
-        if not question["gold_entity_paths"]:
-            question["gold_entity_paths"] = result.paths
-        question["answer_path_counts"] = result.path_counts
-        question["difficulty"] = result.difficulty
-        if not question.get("shortest_path_hops"):
-            distances = graph.shortest_distances(question["start_entity"])
-            question["shortest_path_hops"] = {a: distances[a] for a in result.answers}
-    return render_visualization(graph, output, question=question, **kwargs)
-
-
-def embedded_html(path, height=760):
-    """srcdoc avoids notebook-server-relative iframe fetches; exports are fallback."""
-    content = html.escape(Path(path).read_text(), quote=True)
-    return f'<iframe title="Interactive knowledge graph inspector" srcdoc="{content}" sandbox="allow-scripts allow-downloads" style="width:100%;height:{height}px;border:1px solid #a5b6c4;border-radius:8px"></iframe>'
 
 
 def quality_assessment(graph, frame, audit, schema, overlaps, config, full):

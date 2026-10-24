@@ -1,5 +1,5 @@
 {
-  "scope": "CPU API and tokenizer/adapter fixtures only; not model inference or GRPO optimization",
+  "scope": "CPU RDF/data/environment tests plus real API/tokenizer/adapter fixtures; not pretrained model inference or GRPO optimization",
   "cpu_versions": {
     "torch": "2.6.0",
     "transformers": "5.3.0",
@@ -12,6 +12,8 @@
     "numpy": "1.26.4",
     "pandas": "2.2.3",
     "pyarrow": "21.0.0",
+    "rdflib": "7.6.0",
+    "pyparsing": "3.2.3",
     "tokenizers": "0.22.2",
     "huggingface-hub": "1.33.0",
     "matplotlib": "3.9.4",
@@ -32,7 +34,7 @@
     "min": 546,
     "max": 557
   },
-  "trl_source_sha256": "256f2fc2f26922758453997af16f163ce5bb6b5893055c2df5c89e50be5e3560",
+  "trl_source_sha256": "52d9a6c1e298df35d0da4a6fa17874d750ee627f6ac15393c8860d74d1ba4917",
   "trl_uses_env_mask_as_tool_mask": true,
   "trl_masks_loss_with_tool_mask": true,
   "grpo_trainer_signature": "(model: 'str | PreTrainedModel | PeftModel', reward_funcs: str | transformers.modeling_utils.PreTrainedModel | collections.abc.Callable[..., list[float | None]] | list[str | transformers.modeling_utils.PreTrainedModel | collections.abc.Callable[..., list[float | None]]] | None = None, args: trl.trainer.grpo_config.GRPOConfig | None = None, train_dataset: datasets.arrow_dataset.Dataset | datasets.iterable_dataset.IterableDataset | None = None, eval_dataset: datasets.arrow_dataset.Dataset | datasets.iterable_dataset.IterableDataset | datasets.dataset_dict.DatasetDict | datasets.dataset_dict.IterableDatasetDict | dict[str, datasets.arrow_dataset.Dataset | datasets.iterable_dataset.IterableDataset] | None = None, processing_class: transformers.tokenization_utils_base.PreTrainedTokenizerBase | transformers.processing_utils.ProcessorMixin | None = None, reward_processing_classes: transformers.tokenization_utils_base.PreTrainedTokenizerBase | list[transformers.tokenization_utils_base.PreTrainedTokenizerBase] | None = None, callbacks: list[transformers.trainer_callback.TrainerCallback] | None = None, optimizers: tuple[torch.optim.optimizer.Optimizer | None, torch.optim.lr_scheduler.LambdaLR | None] = (None, None), quantization_config: 'BitsAndBytesConfig | None' = None, peft_config: 'PeftConfig | None' = None, tools: list[collections.abc.Callable] | None = None, rollout_func: collections.abc.Callable[[list[str], 'GRPOTrainer'], dict[str, typing.Any]] | None = None, environment_factory: collections.abc.Callable[[], trl.trainer.grpo_trainer._SupportsReset] | dict[str, collections.abc.Callable[[], trl.trainer.grpo_trainer._SupportsReset]] | None = None)",
@@ -44,45 +46,52 @@
   "kaggle_execution_verified": false,
   "gpu_test_status": "UNVERIFIED; execute the notebook smoke gate on Kaggle",
   "implementation_sha256": {
-    "__init__.py": "f972ccb5d764494cff3f8af24a1f4533b117e433be803e75419dd640fa59aaf7",
-    "environment.py": "ba058521b4bb13ab8f539958d11a1a7d7a89674252882af97837e8c85c94ff8d",
-    "grpo.py": "984c6e7e5089a0cdd5a3d11ce38f7d3e88868095365f7194ade7e0d0ebec42f3",
-    "rollouts.py": "c7508336668b32fd10f27872d7967e5d40004b583b63902378306ef1cd8894aa"
+    "__init__.py": "a0fca7f6e0716dea06a19a0872d06371a36aa55890e36f3a00935804e0d38420",
+    "config.py": "555a80fece0e458c5589cb03ef7c7dc5df9b3212adbbbefe42304f5bca16580b",
+    "conversion.py": "8230e44af4164c9babeb65e5d5851b7c2e1106f9ddae069afe348901dbac7ead",
+    "dataset_builder.py": "40dcdf43cebfbc130bde837f45522b508f0587f407faac780d5be561e78ee756",
+    "eda.py": "5128def2ea0910f1beef22aefea6d9169a399c8ad59c119b1bf2e3160992f723",
+    "graph_generator.py": "62b2d5e1e3619899b571a00ad2522fe81180efa49c59cb601d4415ebaccb258e",
+    "graph_index.py": "c7baf8c6e6e03b8d5d3d8ffcf5aeb4aa581d03616287d1e279222d8feec25f56",
+    "ontology.py": "b6b3a63381781b16ebb0cc6a1f8a3bdc8df81a52c525f69c3b963cd4d5d6afa6",
+    "query_generator.py": "45666fb85fc3de881d424745d14ed7420bcbc70af996ce52bef5079afd8ff781",
+    "question_templates.py": "2c81bfe516208172765f81e0820eb18d0e8d9c41a5aef09d3c6a4d2198b84f0c",
+    "rdf.py": "1efd79fa4f969fe367189e00a2630b154f4ecfa068498d13500f5d3784ba96fc",
+    "statistics.py": "a871b1be31574d141277ffd1c2f431228f596cde6a1c3b4ff70bfb732bce1947",
+    "training/__init__.py": "f972ccb5d764494cff3f8af24a1f4533b117e433be803e75419dd640fa59aaf7",
+    "training/environment.py": "741dabecdf9059a7ef021cf2582124a98ed20608b92cda265f975223bef766f7",
+    "training/grpo.py": "43a94a89527ed1f2efb3569e983bf9c6aaf24967f2fbe137378208ee040f025e",
+    "training/rollouts.py": "c7508336668b32fd10f27872d7967e5d40004b583b63902378306ef1cd8894aa",
+    "validators.py": "76af506b8431afccc08b9f2cf0d38fd7b99dc191e4adcda689ffa9bd399797a7"
   },
   "final_cpu_validation": {
-    "unit_tests_passed": 72,
+    "unit_tests_passed": 69,
     "ordinary_environment_optional_tests_skipped": 3,
-    "isolated_pinned_api_tests_passed": 3,
+    "isolated_pinned_full_suite_passed": 72,
     "notebook_executed_code_cells": 14,
     "notebook_error_outputs": 0,
-    "source_files_unchanged": 24,
-    "source_sha256": {
-      "data/config.json": "e24fc79f5c9defed3392d5d19a4bb0de3f7598836b4c6ff3303bde1f7ebf73a2",
-      "data/graph/entities.json": "278bdd95d9b1a37a4639824f0cc2b142f62fd7f9391d480cf3004ef4c8891b6c",
-      "data/graph/relations.json": "73628bbc1073d9e10de5e5be984e866a146f5800d1fb38fdc65c224554be16b2",
-      "data/graph/triples.tsv": "6caec7426b0b6094cbc13350ce70c59dd90e5e570ae16b995ab25670da781e7f",
-      "data/metadata/inspection_status.json": "a1ba67c19c9b5d1ac3ec5f973052456f2a57f42ede93e6c69e8125bd790d7b70",
-      "data/metadata/query_programs.jsonl": "00aa25099a6ffb4456fb5e344f2ce45e135cdba5e01a744e3caac03b38802850",
-      "data/metadata/report.md": "9184fb6864458481ab9c3ddcd121a1d4f9acbc96cbbcb73ada90e36096bdeef6",
-      "data/metadata/samples.md": "472e67ab121204e238f7bd7841d1481ae9fe784a03d3f781af67dfb719191aaf",
-      "data/metadata/statistics.json": "e614b8c9612581e877b92fa6efbdc7fc9e373f749815817649e2900b2bed9dd3",
-      "data/metadata/validation.json": "7eabcf1cbe7be858973a827ced776fc2c839bd2440e3efdebd177b2a1511ad8e",
-      "data/rl/test.jsonl": "332d4c648122f043895a2701bf3d456db7c95702709b83facc54a5dbe773e167",
+    "qa_and_conversation_files_unchanged": 9,
+    "qa_and_conversation_sha256": {
       "data/rl/train.jsonl": "816f645127e1984a0288616297fa1532463114613f0674c445638a080cc7936a",
+      "data/rl/test.jsonl": "332d4c648122f043895a2701bf3d456db7c95702709b83facc54a5dbe773e167",
       "data/rl/validation.jsonl": "79668cdbd8d7a5542aadca173cadb05065e29135632c4a0fe01d4f401e3b0995",
-      "pilot_data/config.json": "51df36bcb557816357012d342b33b16d32e1319a62d2cdc8fe8210b7e2eccf4f",
-      "pilot_data/graph/entities.json": "278bdd95d9b1a37a4639824f0cc2b142f62fd7f9391d480cf3004ef4c8891b6c",
-      "pilot_data/graph/relations.json": "73628bbc1073d9e10de5e5be984e866a146f5800d1fb38fdc65c224554be16b2",
-      "pilot_data/graph/triples.tsv": "6caec7426b0b6094cbc13350ce70c59dd90e5e570ae16b995ab25670da781e7f",
-      "pilot_data/metadata/query_programs.jsonl": "00aa25099a6ffb4456fb5e344f2ce45e135cdba5e01a744e3caac03b38802850",
-      "pilot_data/metadata/report.md": "219e1cb2cec72182576c29a06a8eccfc2a5ca835efa0efc9dfa18601ed67cb48",
-      "pilot_data/metadata/statistics.json": "80ba29b6d13823abb1f1d50c9b0627992871aa0e8eb3999f2d014fde4dfc04f5",
-      "pilot_data/metadata/validation.json": "dcf1dfb9a9fd090b599b21796821af3d80db29b6b022bd24adbb7e008e21b6e9",
-      "pilot_data/rl/test.jsonl": "4dcecc78e7140e0a0b09d466a9b5cebea62d4c52e566e4e9d92202307e5a3d9c",
       "pilot_data/rl/train.jsonl": "19712cf76ab18dd506235c74b5fbf9633cc5d422b4dfd0231f08ce5741e9a0e5",
-      "pilot_data/rl/validation.jsonl": "d9c2357c6619c4b271f2cf1c27fe04f98f1857bab68f49a07c7ef963c90f1c9e"
+      "pilot_data/rl/test.jsonl": "4dcecc78e7140e0a0b09d466a9b5cebea62d4c52e566e4e9d92202307e5a3d9c",
+      "pilot_data/rl/validation.jsonl": "d9c2357c6619c4b271f2cf1c27fe04f98f1857bab68f49a07c7ef963c90f1c9e",
+      "conversations/train.jsonl": "eb3b3eb59a5842450d20c3e19402ed0549536987349c7790a55abb0a23f32b51",
+      "conversations/test.jsonl": "75cfa60524623931be6ea531fe8545553ae77caa3a3dc6558b4650c8b6fb67a2",
+      "conversations/validation.jsonl": "608e204f42b7c9d88855f240addf15eada687db1e8979d526006c90fcd1c8df4"
     },
-    "syntax_checked_files": 7,
+    "rdf_backend": "RDFLib 7.6.0; Turtle; pyparsing 3.2.3",
     "all_notebook_cells_parse": true
+  },
+  "core_suite": {
+    "passed": 69,
+    "optional_api_tests_skipped": 3
+  },
+  "isolated_pinned_full_suite": {
+    "passed": 72,
+    "skipped": 0,
+    "includes_pinned_api_tests": 3
   }
 }

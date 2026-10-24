@@ -72,7 +72,8 @@ def graph_errors(graph, config=None):
             check(dict(Counter(e["type"] for e in graph.entities.values())) == g["type_counts"], "Configured type counts mismatch")
         limits = {"authored_by": g["max_authors"], "investigates": g["max_project_fields"],
                   "funded_by": g["max_project_funders"], "collaborates_with": g["collaboration_degree_target"]}
-        for entity, relations in graph.adjacency.items():
+        for entity in graph.entities:
+            relations = graph.neighbor_map(entity)
             for relation, limit in limits.items():
                 check(len(relations.get(relation, ())) <= limit, f"Degree cap violated: {entity}/{relation}")
             if graph.entities[entity]["type"] == "project":

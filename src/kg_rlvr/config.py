@@ -33,7 +33,6 @@ DEFAULT = {
         "composition_test_count": 0,
         "holdout_program_fraction": 0.25,
     },
-    "visualization": {"max_nodes": 120, "max_edges": 220, "radius": 2},
 }
 
 
@@ -72,8 +71,6 @@ def load_config(path=None):
         raise ValueError("Graph cardinality limits must be positive")
     if not g["extra_relation_weights"] or any(v <= 0 for v in g["extra_relation_weights"].values()):
         raise ValueError("Extra relation weights must be positive")
-    if any(config["visualization"][k] < 1 for k in ("max_nodes", "max_edges", "radius")):
-        raise ValueError("Visualization limits must be positive")
     return config
 
 

@@ -13,7 +13,7 @@ The saved notebook outputs explicitly record these limits.
 | `notebooks/02_grpo_training_kaggle.ipynb` | All 13 requested sections; saved outputs from CPU preflight |
 | `src/kg_rlvr/training/environment.py` | Existing graph access, isolated discovery state, typed tools, public prompts, private answer verifier |
 | `src/kg_rlvr/training/rollouts.py` | Real Transformers generation, multi-turn orchestration, token preservation, observation masks, evaluation and logs |
-| `src/kg_rlvr/training/grpo.py` | Pinned TRL/QLoRA construction, metrics, genuine-update checks, checkpoints, export/reload and observed-trajectory HTML |
+| `src/kg_rlvr/training/grpo.py` | Pinned TRL/QLoRA construction, metrics, genuine-update checks, checkpoints, export/reload |
 | `src/kg_rlvr/training/__init__.py` | Optional training package |
 | `requirements-grpo.txt` | Separate pinned optional training dependencies |
 | `tests/test_training_environment.py` | CPU graph, reward, isolation, leakage, episode, token-mask and checkpoint checks |
@@ -23,16 +23,19 @@ The saved notebook outputs explicitly record these limits.
 | `artifacts/grpo/runs/kg_grpo_seed41/` | Actual local configuration, selected task IDs, memory snapshot and execution evidence |
 | `README.md`, `src/kg_rlvr/__init__.py` | Usage, optional-training scope and limitations |
 
-No source graph or question file was changed. All 24 files across `data/` and
-`pilot_data/` were compared with their initial SHA-256 fingerprints after the
-final checks. The notebook additionally fingerprints its selected dataset before
-and after execution. It reuses `GraphIndex`, `NavigationSession`, the existing
-question reader, in-memory validator and SVG/HTML visualization template.
+The graph backend now uses RDFLib 7.6.0 and the saved graphs have been migrated
+to Turtle. All question and conversational JSONL records retain their original
+bytes, IDs, answers and paths. See [the RDF migration report](rdf_migration_report.md).
+The notebook fingerprints its selected inputs before and after execution and
+reuses `GraphIndex`, `NavigationSession`, the question reader and in-memory
+validator. Graph inspection is through Protégé; custom HTML graph views have
+been removed. Statistical and training-metric charts remain.
 
 ## Selected stack
 
 | Library | Pin | Local verification |
 |---|---|---|
+| RDFLib / pyparsing | 7.6.0 / 3.2.3 | Turtle load/save, OWL schema, forward/inverse navigation and unchanged QA execution |
 | PyTorch | 2.6.0; cu124 wheel on Kaggle | CPU wheel imported; CUDA wheel not executed |
 | Transformers | 5.3.0 | Real Qwen tokenizer and tiny random Qwen architecture |
 | TRL | 1.8.0 | Config, actual RepeatSampler and custom-rollout mask boundary |
@@ -127,11 +130,11 @@ invalid-action or path rewards. Acknowledgments do not expose correctness.
 
 | Check | Result |
 |---|---|
-| Full local pytest suite | **72 passed, 3 skipped**; skips are optional pinned-stack tests in the ordinary environment |
-| Separate pinned-stack API suite | **3 passed**; real TRL config/sampler/mask boundary, real Qwen BPE template, tiny CPU PEFT adapter save/reload |
+| Full local pytest suite | **69 passed, 3 skipped**; skips are optional pinned-stack tests in the ordinary environment |
+| Isolated pinned-stack full suite | **72 passed in the isolated pinned environment**, including the 3 API checks; real TRL config/sampler/mask boundary, real Qwen BPE template, tiny CPU PEFT adapter save/reload |
 | Notebook execution | **14 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
 | Graph and QA loading | Existing 2,000 entities, 5,000 triples and 2,800 questions validated in memory |
-| Source preservation | All 24 original data/pilot files unchanged |
+| Source preservation | All original QA/conversational records unchanged; graph format migrated to Turtle |
 | Python/notebook syntax | Supporting modules and every code cell compile |
 | Pretrained Qwen inference/tool calls | **UNVERIFIED** |
 | Multiple real model trajectories per question | **UNVERIFIED** |
@@ -158,15 +161,22 @@ sampling or changing public limits; full training does not follow a failed gate.
 
 ## Exact Kaggle execution procedure
 
-1. Upload the repository as a Kaggle input dataset, retaining `src/kg_rlvr/`,
-   `requirements-grpo.txt`, and the saved `data/graph`, `data/rl`, configuration
-   and metadata files. A separate graph/QA input mount is also supported.
-2. Create a Kaggle Python 3.11/3.12 notebook and import
+1. Create a Kaggle Python 3.11/3.12 notebook and import
    `notebooks/02_grpo_training_kaggle.ipynb`. Select GPU T4 acceleration and enable
-   internet for installation and the pinned model download. Only one T4 is used.
-3. In the configuration cell, set `PROJECT_ROOT_OVERRIDE` to the directory with
-   `src/`, and `DATA_ROOT_OVERRIDE` to the existing dataset directory. Keep working
-   outputs under `/kaggle/working/`. No dataset slug is hardcoded.
+   internet for GitHub, installation and the pinned model download. Only one T4
+   is used.
+2. Leave `CLONE_REPOSITORY=True`, `REPOSITORY_BRANCH="master"`, and
+   `PROJECT_ROOT_OVERRIDE=None`. The configuration cell obtains
+   `https://github.com/AlirezaAK2000/kg-navigation-rlvr.git` directly in the current
+   working directory, normally `/kaggle/working/`. It creates no repository-named
+   subfolder. Empty folders use `git clone ... .`; nonempty folders use a temporary
+   clone followed by a conflict-checked copy including `.git`. Unrelated files
+   remain intact, conflicting files cause an error before copying, and reruns
+   reuse an existing project without pulling automatically.
+3. `PROJECT_ROOT` resolves to that folder and `DATA_ROOT` to its saved `data/`.
+   For separately attached data, set `DATA_ROOT_OVERRIDE`. To use a mounted
+   repository instead, disable cloning and set `PROJECT_ROOT_OVERRIDE` to its
+   directory containing `src/`. Keep outputs under `/kaggle/working/`.
 4. In a fresh session set `INSTALL_DEPENDENCIES=True` if the pins are missing.
    Run setup, which installs the official Torch cu124 wheel then the requirements.
    It can remove unused audio/vision packages to avoid compiled-extension clashes.

@@ -1,6 +1,6 @@
 """Real graph tools, private task lookup, strict Qwen tool parsing and binary RLVR.
 
-This module is stdlib-only on top of the existing graph/dataset utilities.
+This module uses the existing RDFLib-backed graph/dataset utilities.
 Gold information never enters the prompt builder or graph environment.
 """
 

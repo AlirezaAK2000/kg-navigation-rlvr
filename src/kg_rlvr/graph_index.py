@@ -1,4 +1,4 @@
-"""Public navigation API and deterministic reference execution.
+"""RDFLib-backed public navigation API and deterministic reference execution.
 
 get_relations(id) -> sorted available operation IDs (including permitted inverses).
 get_neighbors(id, operation) -> ALL sorted neighbor IDs; never silently truncated.
@@ -9,35 +9,48 @@ NavigationSession permits operations only on previously discovered entities.
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
+from functools import lru_cache
 import json
 from pathlib import Path
 
+from rdflib import Graph
+
 from .ontology import operation_schema
+from .rdf import ENTITY, KG, decode_graph, encode_graph, ontology_graph
 
 
 class GraphIndex:
-    def __init__(self, entities, relations, triples):
+    """Read-only dataset view; edit Turtle and reload to apply graph changes.
+
+    RDFLib answers each uncached lookup; bounded caches hold immutable results.
+    Public lookup methods return fresh lists so callers cannot modify the caches.
+    """
+    def __init__(self, entities, relations, triples, *, rdf=None):
         self.entities = entities
         self.relations = relations
         rows = list(map(tuple, triples))
         if len(rows) != len(set(rows)):
             raise ValueError("Duplicate triples")
         self.triples = tuple(sorted(rows))
-        adjacency = defaultdict(lambda: defaultdict(set))
         for head, rel, tail in self.triples:
             if head not in entities or tail not in entities:
                 raise ValueError("Triple refers to an unknown entity")
             domain, range_ = operation_schema(rel, relations)
             if entities[head]["type"] != domain or entities[tail]["type"] != range_:
                 raise ValueError(f"Ill-typed triple: {(head, rel, tail)}")
-            adjacency[head][rel].add(tail)
-            if relations[rel]["inverse_supported"]:
-                adjacency[tail]["inv:" + rel].add(head)
-        self.adjacency = {e: {r: tuple(sorted(ns)) for r, ns in rs.items()} for e, rs in adjacency.items()}
+        self.rdf = rdf if rdf is not None else encode_graph(entities, relations, self.triples)
+        self._relation_ids = {KG[r]: r for r in relations}
+        self._inverse_ids = {KG[r]: "inv:" + r for r, spec in relations.items() if spec["inverse_supported"]}
+        self._available = lru_cache(maxsize=4096)(self._query_relations)
+        self._neighbors = lru_cache(maxsize=32768)(self._query_neighbors)
 
     @classmethod
     def load(cls, directory):
         directory = Path(directory)
+        if (directory / "graph.ttl").is_file():
+            rdf = Graph().parse(directory / "graph.ttl", format="turtle")
+            return cls(*decode_graph(rdf), rdf=rdf)
+        # Read older dataset mounts; every new save uses Turtle exclusively.
         with (directory / "triples.tsv").open() as stream:
             triples = [line.rstrip("\n").split("\t") for line in stream if line.strip()]
         return cls(json.loads((directory / "entities.json").read_text()), json.loads((directory / "relations.json").read_text()), triples)
@@ -45,9 +58,8 @@ class GraphIndex:
     def save(self, directory):
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "entities.json").write_text(json.dumps(self.entities, indent=2, sort_keys=True) + "\n")
-        (directory / "relations.json").write_text(json.dumps(self.relations, indent=2, sort_keys=True) + "\n")
-        (directory / "triples.tsv").write_text("".join("\t".join(row) + "\n" for row in self.triples))
+        self.rdf.serialize(destination=directory / "graph.ttl", format="turtle")
+        ontology_graph(self.relations).serialize(destination=directory / "ontology.ttl", format="turtle")
 
     def get_entity(self, entity_id):
         if entity_id not in self.entities:
@@ -56,14 +68,31 @@ class GraphIndex:
 
     def get_relations(self, entity_id):
         self.get_entity(entity_id)
-        return sorted(self.adjacency.get(entity_id, {}))
+        return list(self._available(entity_id))
+
+    def _query_relations(self, entity_id):
+        node = ENTITY[entity_id]
+        forward = {self._relation_ids[p] for p in self.rdf.predicates(node) if p in self._relation_ids}
+        reverse = {self._inverse_ids[p] for p in self.rdf.predicates(object=node) if p in self._inverse_ids}
+        return tuple(sorted(forward | reverse))
 
     def get_neighbors(self, entity_id, relation_id):
         self.get_entity(entity_id)
         domain, _ = operation_schema(relation_id, self.relations)
         if self.entities[entity_id]["type"] != domain:
             raise ValueError(f"Operation {relation_id} does not apply to {entity_id}")
-        return list(self.adjacency.get(entity_id, {}).get(relation_id, ()))
+        return list(self._neighbors(entity_id, relation_id))
+
+    def _query_neighbors(self, entity_id, relation_id):
+        inverse = relation_id.startswith("inv:")
+        predicate = KG[relation_id[4:] if inverse else relation_id]
+        nodes = (self.rdf.subjects(predicate, ENTITY[entity_id]) if inverse
+                 else self.rdf.objects(ENTITY[entity_id], predicate))
+        return tuple(sorted(str(node)[len(str(ENTITY)):] for node in nodes))
+
+    def neighbor_map(self, entity_id):
+        """Permitted navigation operations only; RDF schema/label triples stay private to the store."""
+        return {r: self.get_neighbors(entity_id, r) for r in self.get_relations(entity_id)}
 
     def submit_answer(self, entity_ids):
         if isinstance(entity_ids, str):
@@ -77,7 +106,7 @@ class GraphIndex:
         result, pending = {start: 0}, deque([start])
         while pending:
             entity = pending.popleft()
-            for neighbors in self.adjacency.get(entity, {}).values():
+            for neighbors in self.neighbor_map(entity).values():
                 for neighbor in neighbors:
                     if neighbor not in result:
                         result[neighbor] = result[entity] + 1
@@ -98,9 +127,10 @@ class GraphIndex:
         for _ in range(max_depth):
             next_frontier = []
             for members, path in frontier:
-                choices = set().union(*(self.adjacency.get(e, {}).keys() for e in members))
+                choices = set().union(*(self.get_relations(e) for e in members))
                 for rel in sorted(choices):
-                    result = frozenset(n for e in members for n in self.adjacency.get(e, {}).get(rel, ()))
+                    result = frozenset(n for e in members if rel in self.get_relations(e)
+                                       for n in self.get_neighbors(e, rel))
                     if result and result not in seen:
                         new_path = path + (rel,)
                         seen[result] = new_path
@@ -173,7 +203,7 @@ def execute(graph, start, relation_path):
         next_paths, next_counts = {}, defaultdict(int)
         for entity in sorted(paths):
             available = session.get_relations(entity)
-            options = graph.adjacency.get(entity, {})
+            options = graph.neighbor_map(entity)
             relation_options.append(len(available))
             degrees.append(sum(len(v) for v in options.values()))
             distractors += sum(len(v) for r, v in options.items() if r != relation)

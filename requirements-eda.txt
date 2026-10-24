@@ -1,9 +1,9 @@
-# Optional analysis environment; the core generation pipeline stays stdlib-only.
+# Optional analysis environment on top of the core RDFLib graph dependency.
+rdflib==7.6.0
+pyparsing==3.2.3
 pandas>=2,<3
 networkx>=3,<4
 matplotlib>=3.7,<4
 nbformat>=5.9,<6
 nbclient>=0.5,<1
 ipykernel>=6,<7
-# Optional interactive notebook controls (configuration variables work without it):
-# ipywidgets>=8,<9

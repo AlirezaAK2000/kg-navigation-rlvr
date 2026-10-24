@@ -14,8 +14,7 @@ def main():
     parser.add_argument("--notebook", default=str(root / "notebooks/01_dataset_eda.ipynb"))
     parser.add_argument("--data", default=str(root / "data"))
     parser.add_argument("--output", help="Executed notebook path; defaults to overwriting the notebook")
-    parser.add_argument("--output-base", help="Writable directory for figures, HTML, and derived reports")
-    parser.add_argument("--no-widgets", action="store_true")
+    parser.add_argument("--output-base", help="Writable directory for statistical figures and derived reports")
     args = parser.parse_args()
     # Avoid writing Jupyter state into a read-only user home or input mount.
     with tempfile.TemporaryDirectory(prefix="kg_eda_runtime_") as runtime:
@@ -26,8 +25,6 @@ def main():
         os.environ["KG_RLVR_DATA_DIR"] = str(Path(args.data).resolve())
         if args.output_base:
             os.environ["KG_RLVR_EDA_OUTPUT_DIR"] = str(Path(args.output_base).resolve())
-        if args.no_widgets:
-            os.environ["KG_RLVR_EDA_WIDGETS"] = "0"
         os.environ.setdefault("PYDEVD_DISABLE_FILE_VALIDATION", "1")
         import nbformat
         from nbclient import NotebookClient
@@ -36,7 +33,7 @@ def main():
         manager = KernelManager(kernel_name="python3")
         manager.kernel_spec.argv = [sys.executable, "-m", "ipykernel_launcher", "-f", "{connection_file}"]
         client = NotebookClient(notebook, km=manager, timeout=300, allow_errors=False,
-                                resources={"metadata": {"path": str(root)}}, store_widget_state=True)
+                                resources={"metadata": {"path": str(root)}})
         try:
             client.execute()
         finally:

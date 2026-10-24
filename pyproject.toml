@@ -7,7 +7,7 @@ name = "kg-rlvr-data"
 version = "0.1.0"
 description = "Deterministic fictional knowledge graphs and verified multi-hop QA"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["rdflib==7.6.0", "pyparsing==3.2.3"]
 
 [project.optional-dependencies]
 test = ["pytest>=7.4,<9"]

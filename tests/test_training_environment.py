@@ -141,23 +141,6 @@ def test_t4_uses_fp16_even_if_bf16_emulation_is_available(monkeypatch):
     assert not native_bf16_supported()
 
 
-def test_observed_trajectory_view_does_not_display_gold_or_unseen_edges(graph, tmp_path):
-    from kg_rlvr.training.grpo import observed_trajectory_html
-    start = "researcher_000000"
-    uni = graph.get_neighbors(start, "works_at")[0]
-    trace = {"start_entity": start, "question": "Which university employs this researcher?", "submitted_answer": uni,
-        "gold_answer_ids": ["VERIFIER_SECRET"], "turns": [
-            {"tool_call": {"name": "get_neighbors", "arguments": {"entity_id": start, "relation_id": "works_at"}},
-             "observation": {"ok": True, "entities": [graph.get_entity(uni)]}, "observation_in_context": True},
-            {"tool_call": {"name": "get_neighbors", "arguments": {"entity_id": uni, "relation_id": "inv:works_at"}},
-             "observation": {"ok": True, "entities": [graph.get_entity(e) for e in graph.get_neighbors(uni, "inv:works_at")]}, "observation_in_context": False}]}
-    path = tmp_path / "observed.html"
-    payload = observed_trajectory_html(graph, trace, path)
-    assert {n["id"] for n in payload["nodes"]} == {start, uni}
-    assert len(payload["edges"]) == 1 and not payload["edges"][0]["gold"]
-    assert payload["paths"] == [] and "VERIFIER_SECRET" not in path.read_text()
-
-
 def test_adapter_only_directory_cannot_be_used_for_resume(tmp_path):
     from kg_rlvr.training.grpo import check_resume
     adapter = tmp_path / "adapter"

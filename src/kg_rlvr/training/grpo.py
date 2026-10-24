@@ -16,7 +16,7 @@ from .rollouts import GRPORollout, append_jsonl, evaluate_policy
 
 PINS = {"torch": "2.6.0", "transformers": "5.3.0", "trl": "1.8.0", "peft": "0.18.1",
         "accelerate": "1.10.1", "bitsandbytes": "0.49.2", "datasets": "4.8.3", "jmespath": "1.0.1",
-        "numpy": "1.26.4", "pandas": "2.2.3", "pyarrow": "21.0.0"}
+        "numpy": "1.26.4", "pandas": "2.2.3", "pyarrow": "21.0.0", "rdflib": "7.6.0", "pyparsing": "3.2.3"}
 MODEL_REVISIONS = {"Qwen/Qwen3-1.7B": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
                    "Qwen/Qwen3-0.6B": "c1899de289a04d12100db370d81485cdf75e47ca"}
 LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
@@ -213,13 +213,14 @@ def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1
 
 
 def training_manifest(model_name, revision, limits, task_ids, generations, accumulation, learning_rate, seed, r=8, alpha=16):
+    package = Path(__file__).resolve().parents[1]
     return {"model_name": model_name, "revision": revision, "limits": asdict(limits),
             "task_ids": task_ids, "num_generations": generations, "gradient_accumulation_steps": accumulation,
             "learning_rate": learning_rate, "seed": seed, "lora_r": r, "lora_alpha": alpha,
             "lora_dropout": 0.0, "lora_targets": LORA_TARGETS, "beta": 0.0,
             "loss_type": "grpo", "versions": dependency_versions(),
-            "implementation_sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                                      for p in sorted(Path(__file__).parent.glob("*.py"))}}
+            "implementation_sha256": {str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest()
+                                      for p in sorted(package.rglob("*.py"))}}
 
 
 def check_resume(checkpoint, manifest):
@@ -265,35 +266,3 @@ def reload_adapter_in_place(model, directory):
         delattr(base, "peft_config")  # residual metadata after PEFT 0.18.1 unload
     gc.collect()
     return PeftModel.from_pretrained(base, directory, is_trainable=False)
-
-
-def observed_trajectory_html(graph, trace, output, max_nodes=80, max_edges=140):
-    """Visualize only model-observed traversals; never use a gold path highlight."""
-    import html
-    from ..visualization import HTML
-    observed, edges = {trace["start_entity"]}, {}
-    for turn in trace["turns"]:
-        call, result = turn.get("tool_call", {}), turn.get("observation", {})
-        if call.get("name") != "get_neighbors" or not result.get("ok") or not turn.get("observation_in_context"):
-            continue
-        head, rel = call["arguments"]["entity_id"], call["arguments"]["relation_id"]
-        observed.update([head, *(e["id"] for e in result.get("entities", []))])
-        for entity in result.get("entities", []):
-            edges[head, rel, entity["id"]] = {"from": head, "relation": rel, "to": entity["id"], "gold": False}
-    if len(observed) > max_nodes or len(edges) > max_edges:
-        raise ValueError("Increase trajectory display limits; observed traversals are never silently omitted")
-    from ..visualization import COLORS
-    nodes = [{"id": e, **graph.entities[e], "color": COLORS[graph.entities[e]["type"]], "layer": None,
-              "role": "start" if e == trace["start_entity"] else "answer" if e == trace["submitted_answer"] else "context"} for e in sorted(observed)]
-    payload = {"mode": "Model-observed traversal (no gold path)", "model_question": trace["question"], "start": trace["start_entity"], "nodes": nodes,
-               "edges": list(edges.values()), "paths": [], "question": None, "colors": COLORS,
-               "graph_counts": {"nodes": len(graph.entities), "edges": len(graph.triples)}, "limits": {"nodes": max_nodes, "edges": max_edges}}
-    raw = json.dumps(payload).replace("<", "\\u003c").replace(">", "\\u003e")
-    document = HTML.replace("__TITLE__", html.escape("Model-observed graph traversal")).replace("__PAYLOAD__", raw)
-    document = document.replace('data.question?data.question.question:data.nodes.find(n=>n.id===data.start).name',
-                                'data.question?data.question.question:(data.model_question || data.nodes.find(n=>n.id===data.start).name)')
-    document = document.replace("Start: cyan ring · intermediate: violet ring · answers: amber ring. Other nodes provide context and distractors.",
-                                "Cyan ring: starting entity. Amber ring: submitted entity, regardless of correctness. Edges are observed tool results; no gold path is shown.")
-    Path(output).parent.mkdir(parents=True, exist_ok=True)
-    Path(output).write_text(document)
-    return payload

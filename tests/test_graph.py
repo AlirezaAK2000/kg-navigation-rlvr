@@ -36,7 +36,8 @@ def test_graph_roundtrip(tmp_path, graph):
     graph.save(tmp_path)
     loaded = GraphIndex.load(tmp_path)
     assert loaded.triples == graph.triples
-    assert loaded.adjacency == graph.adjacency
+    assert loaded.relations == graph.relations
+    assert all(loaded.neighbor_map(e) == graph.neighbor_map(e) for e in graph.entities)
     assert loaded.entities == graph.entities
 
 

@@ -5,7 +5,7 @@ pytest.importorskip("pandas")
 pytest.importorskip("networkx")
 
 from kg_rlvr.eda import (
-    OPTIONAL, embedded_html, export_graph_view, fingerprint, graph_views,
+    OPTIONAL, fingerprint, graph_views,
     navigation_audit, near_duplicate_screen, output_directory, question_frame,
     schema_audit, split_overlaps, stratified_samples,
 )
@@ -32,10 +32,6 @@ def test_missing_optional_metadata_is_measured_not_invented(graph, questions, tm
     frame = question_frame(graph, records)
     overlaps, _ = split_overlaps(frame)
     assert overlaps.loc[overlaps.item == "query_instance", "shared"].sum() == 0
-    output = tmp_path / "question.html"
-    payload = export_graph_view(graph, output, question=records[0])
-    assert payload["question"]["gold_entity_paths"]
-    assert "srcdoc=" in embedded_html(output)
     assert "gold_entity_paths" not in records[0]  # no mutation of input dictionaries
 
 

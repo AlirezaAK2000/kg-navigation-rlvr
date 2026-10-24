@@ -1,31 +1,32 @@
-# Synthetic knowledge graph navigation data
+# Knowledge graph navigation with verifiable rewards
 
 A deterministic, CPU-only dataset-generation and inspection pipeline for studying
 multi-turn graph navigation. It produces a fictional academic ecosystem, typed
 2/3/4-hop set-valued questions, private verifier metadata, leakage-aware splits,
-statistics, and standalone interactive HTML inspectors. An optional Kaggle
+statistics, and RDF/Turtle graph and ontology files for Protégé. An optional Kaggle
 notebook adds real multi-turn GRPO training with Qwen3 and NF4 QLoRA; its
 GPU-dependent validation status is documented below.
 
-Python **3.11+** is required. Generation, validation, conversion, and visualization
-use only the standard library. `pytest` is the only development dependency. The
-same graph loads on Kaggle without a GPU, external database, or network access.
+Python **3.11+**, **RDFLib 7.6.0**, and **pyparsing 3.2.3** are required. The graph backend uses RDFLib
+for triple storage, parsing, serialization and forward/inverse lookup. `pytest`
+is used for development tests. A saved graph loads locally or on Kaggle without
+a GPU, external database, or network access once dependencies are installed.
 
 ## Included outputs
 
 - `data/`: full dataset, **2,000 train + 300 validation + 500 test**.
 - `pilot_data/`: **100 questions**, split 70/10/20, using the same full-sized graph.
-- `visualizations/`: overview, entity neighborhood, and question inspectors for
-  all three hop categories, including a multi-answer example.
+- `data/graph/graph.ttl`: self-contained OWL ontology, labeled individuals and graph facts.
+- `data/graph/ontology.ttl`: OWL schema without the individuals.
 - `data/metadata/samples.md`: ten seeded random questions with complete answers,
   reference paths, and fresh executable verification.
 - `data/metadata/report.md` and `statistics.json`: readable and machine-readable reports.
 - `data/metadata/validation.json`: independent validation and regeneration checks.
 - `conversations/`: public, prompt-only conversational JSONL exports.
 
-Open `visualizations/index.html` in a browser to select an inspection mode.
-See `VERIFICATION.md` for completed checks and the remaining browser inspection
-blocked by this session's unavailable computer-use permission.
+Open **`data/graph/graph.ttl` in Protégé** to inspect classes, properties and
+individuals. See `VERIFICATION.md` and [the RDF migration report](docs/rdf_migration_report.md)
+for validation evidence.
 
 ## Reproduce
 
@@ -34,7 +35,7 @@ to overwrite an existing nonempty dataset. The checked-in artifacts already use
 `data` and `pilot_data`, so these commands use new directory names.
 
 ```bash
-python3.11 -m pip install -r requirements.txt  # only needed for pytest
+python3.11 -m pip install -r requirements.txt
 python3.11 -m pytest -q
 
 python3.11 scripts/generate_dataset.py --config configs/pilot.json --output pilot_reproduced
@@ -44,7 +45,6 @@ python3.11 scripts/generate_dataset.py --config configs/default.json --output da
 python3.11 scripts/validate_dataset.py --data data_reproduced --check-reproducibility
 python3.11 scripts/sample_questions.py --data data_reproduced --count 10 --seed 41
 python3.11 scripts/convert_conversations.py --data data_reproduced --output conversations_reproduced
-python3.11 scripts/inspection_bundle.py --data data_reproduced --output visualizations_reproduced
 ```
 
 Validation returns a nonzero exit code on any failure. Fixed-seed regeneration
@@ -64,9 +64,8 @@ any working directory with appropriate input/output paths.
 data/
   config.json                    # fully resolved configuration
   graph/
-    entities.json                # ID -> {name, type}
-    relations.json               # typed ontology, cardinalities and constraints
-    triples.tsv                  # headerless head<TAB>relation<TAB>tail
+    graph.ttl                    # OWL schema + individuals + asserted graph edges
+    ontology.ttl                 # OWL schema only; open either file in Protégé
   rl/
     train.jsonl                  # PRIVATE records, including verifier metadata
     validation.jsonl
@@ -108,7 +107,7 @@ prevent fact memorization. The same seed/configuration preserves IDs and names.
 
 Cardinalities below are from head to tail; “many:one” means a functional
 relation. Mandatory participation is independent of cardinality. Full logical
-constraints are exported in `relations.json` and checked by `graph_errors`.
+constraints are exported as annotations in `ontology.ttl` and checked by `graph_errors`.
 
 | Relation | Domain → range | Cardinality | Participation / constraint |
 |---|---|---|---|
@@ -133,7 +132,7 @@ All relations except the two symmetric ones permit inverse traversal, with
 operation IDs such as `inv:works_at`. Symmetric relations store both directions
 and use their forward operation in either direction; their `inv:` aliases are
 forbidden. The **5,000 triple count includes reciprocal symmetric triples**;
-inverse adjacency entries for other relations are derived, not stored triples.
+inverse traversal for other relations queries incoming edges without adding stored triples.
 Distinct IDs avoid polymorphic `located_in` ambiguity. Cardinality limits and
 hierarchy/citation constraints also apply when inverse navigation is enabled.
 
@@ -222,7 +221,7 @@ to program-conforming walks; one reference path is not asserted to be unique.
 keys are rejected. Entity/triple counts, explicit per-type populations, seeds,
 leaders, coauthor/field/funder caps, collaboration degree targets, extra-relation
 weights, question counts, hop weights, branching/answer/response/tool budgets,
-paraphrase counts, splitting policy, and visualization limits are configurable.
+paraphrase counts and splitting policy are configurable.
 Entity counts scale the default proportions unless `graph.type_counts` is given.
 At least 100 entities are supported; explicit populations must meet documented
 coverage constraints and fit the requested coherent backbone budget.
@@ -273,48 +272,51 @@ reference-entity overlap, and operation overlap for every split pair. Additional
 statistics cover degree, components, answer sizes, branching, tool calls, path
 multiplicity, templates, relations, duplicates, rejection reasons, and warnings.
 
-## Interactive inspection
+## RDF graph and Protégé inspection
 
-These are standalone, offline HTML files. Double-click a file, drag it into a
-browser, or use your browser's Open File command. No server, CDN, database,
-JavaScript package installation, or frontend framework is needed. A small native
-SVG renderer is used instead of PyVis to keep offline packaging self-contained.
-`inspection_bundle.py` reproducibly creates the index and all modes, choosing
-examples with the largest complete answer sets for each hop category.
+Open `data/graph/graph.ttl` using **File → Open** in Protégé. The file embeds the
+OWL ontology and all 2,000 individuals, readable labels, stable entity IDs and
+5,000 asserted graph edges. It needs no external ontology imports. Use Classes,
+Object properties and Individuals to inspect it. `ontology.ttl` contains just
+the schema. The custom HTML/SVG graph renderer and generated graph views have
+been removed; EDA distributions and training-metric plots remain in the notebooks.
 
-```bash
-# Mode A: bounded, representative overview
-python3.11 scripts/visualize.py --data data --max-nodes 120 --max-edges 220
+The namespace is `https://example.org/kg-navigation-rlvr/ontology#` (`kg:`), with
+individuals under `https://example.org/kg-navigation-rlvr/entity/` (`entity:`).
+These are identifiers for fictional data; loading does not dereference them.
+Eight `owl:Class` declarations represent entity types. Relations are
+`owl:ObjectProperty` declarations with domains/ranges, functional or symmetric
+characteristics where applicable, inverse-property declarations, and annotations
+preserving the generation constraints and permitted inverse traversal settings.
+The inverse properties are schema declarations; the training backend queries
+incoming asserted edges without materializing inferred facts.
 
-# Mode B: local neighborhood, with optional type and relation filters
-python3.11 scripts/visualize.py --data data --entity researcher_000042 --radius 2
-python3.11 scripts/visualize.py --data data --entity researcher_000042 --radius 1 \
-  --entity-types university --relation-types works_at --output visualizations/employment.html
+`graph.ttl` is the authoritative self-contained dataset. `ontology.ttl` is a
+schema-only export for inspection. Edit the complete graph file when editing a
+dataset in Protégé, save as Turtle, then validate it. The loader expects the
+project's stable IDs and schema annotations. The validator checks the versioned
+ontology and closed-world constraints; OWL domain/range and functional-property
+axioms do not replace those checks. Automatic reasoning is not run in training.
+The RDF file contains 13,232 triples in total: 5,000 navigation facts plus entity
+metadata and ontology declarations. Navigation exposes only the 16 declared
+relation IDs and their permitted inverse operations, excluding labels and schema
+predicates. QA answers, query programs and reference paths stay in private JSONL.
 
-# Mode C: question (replace the ID with any ID from the saved question files)
-python3.11 scripts/visualize.py --data data --question-id q_000001 --paths-per-answer 3
+```python
+from rdflib import Graph
+from kg_rlvr.rdf import ENTITY, KG
+
+rdf = Graph().parse("data/graph/graph.ttl", format="turtle")
+universities = list(rdf.objects(ENTITY.researcher_000042, KG.works_at))
+researchers = list(rdf.subjects(KG.works_at, universities[0]))
 ```
 
-The inspectors support mouse-wheel zoom, toolbar zoom/fit, background panning,
-node dragging, name/ID search, node inspection, type/relation filters, and optional
-edge labels. Colors identify entity types. Rings distinguish start, intermediate,
-and answer nodes; cyan edges highlight the reference traversals. Hover over an
-edge or node for its full label. Inverse highlighted edges are drawn in traversal
-direction and explicitly labeled `inv:...`; context edges use stored directions.
-
-Question mode displays the question, program, answer IDs, hop count, shortest
-distances, branching and tool statistics. The path selector includes witnesses
-for **every answer**, with up to three actual paths per answer by default. It
-reports total program-conforming walk counts and does not imply that displayed
-witnesses exhaust all solutions. Reference paths survive context filters and
-limits at generation time; insufficient limits raise an error rather than omit
-an answer. Interactive filters intentionally let the inspector hide nodes/edges.
-
-The overview is a breadth-first bounded projection, not a uniform sample of graph
-statistics; use the full-data report for those. Neighborhood radius and limits
-bound context. Edge caps can prune isolated context nodes; every gold path is
-retained. HTML embeds a derived view of the canonical saved graph, not a second
-editable graph store. The Python visualizer always reads the saved input files.
+`GraphIndex` preserves the existing string-ID tool API and uses RDFLib's
+`objects`, `subjects` and `predicates` queries. `NavigationSession` retains
+per-episode discovery state. Reference execution still counts every valid walk
+and records witnesses, branching and tool usage. The backend no longer builds a
+custom adjacency index. Existing JSON/TSV graph mounts remain readable as a
+compatibility input; new generation and `GraphIndex.save()` write Turtle.
 
 ## Hugging Face / future TRL integration
 
@@ -351,8 +353,8 @@ Tests cover graph determinism and constraints, inverse traversal, discovery
 gating, complete multi-answer execution, convergent alternative paths, all hop
 categories, semantic template linkage, shorter-program enumeration, grouped
 splitting, unseen compositions, disjoint starting IDs, corruption detection,
-impossible constraints, prompt isolation, export/reload/regeneration, and all
-visualization modes. Semantic correspondence ultimately rests on the reviewed
+impossible constraints, prompt isolation, export/reload/regeneration, RDF round trips, OWL declarations, and RDFLib
+property-path/SPARQL agreement. Semantic correspondence ultimately rests on the reviewed
 template definitions: automatic checks enforce exact binding to those definitions
 and cannot prove that a newly authored English template expresses its program.
 
@@ -365,78 +367,38 @@ difficulty scale for a language model.
 ## Exploratory analysis notebook
 
 Open [`notebooks/01_dataset_eda.ipynb`](notebooks/01_dataset_eda.ipynb) in Jupyter,
-VS Code, or Kaggle and run all cells with Python 3.11+. The saved notebook includes
-executed tables, 16 charts, five verified question examples per hop category,
-interactive graph exports, quality checks, and conclusions based on the loaded
-data. Its size is about 2 MB.
-
-The core generation pipeline remains stdlib-only. Install the optional analysis
-dependencies separately:
+VS Code or Kaggle. It provides 15 statistical charts, five verified question
+examples per hop category, schema/quality checks, leakage analysis and findings
+computed from the saved dataset. Graph inspection uses Protégé and the Turtle
+files described above.
 
 ```bash
 python3.11 -m pip install -r requirements-eda.txt
-# Optional live notebook controls:
-python3.11 -m pip install 'ipywidgets>=8,<9'
-```
-
-For headless execution with the same interpreter and saved outputs:
-
-```bash
 python3.11 scripts/run_eda_notebook.py
-# Alternate dataset, writable output location, and no widget dependency:
+# Alternate saved data and derived-output directory:
 python3.11 scripts/run_eda_notebook.py --data pilot_data \
-  --output notebooks/pilot_eda.ipynb --output-base /tmp/pilot_eda --no-widgets
+  --output notebooks/pilot_eda.ipynb --output-base /tmp/pilot_eda
 ```
 
-The first notebook cell exposes `PROJECT_ROOT_OVERRIDE`, `DATA_DIR_OVERRIDE`,
-`OUTPUT_BASE_OVERRIDE`, seed, sampling, validation, and display limits. Environment
-variables `KG_RLVR_PROJECT_ROOT`, `KG_RLVR_DATA_DIR`, and
-`KG_RLVR_EDA_OUTPUT_DIR` are equivalent path overrides. The runner sets these
-variables and starts a local Jupyter kernel; it needs permission for local
-loopback sockets. It never invokes graph generation or the validator CLI that
-writes into `data/`.
+Configuration exposes `PROJECT_ROOT_OVERRIDE`, `DATA_DIR_OVERRIDE`,
+`OUTPUT_BASE_OVERRIDE`, seed, sampling and validation choices. Equivalent path
+variables are `KG_RLVR_PROJECT_ROOT`, `KG_RLVR_DATA_DIR` and
+`KG_RLVR_EDA_OUTPUT_DIR`. Outputs go under `artifacts/eda/{figures,reports}/`
+locally or `/kaggle/working/kg_rlvr_eda/` on Kaggle. The runner starts a local
+Jupyter kernel and needs local loopback sockets. It never regenerates source
+data or invokes the validator CLI that writes reports into the input directory.
 
-On Kaggle:
+On Kaggle, mount the repository and saved graph/QA data, install the optional
+analysis requirements, set the project/data overrides as needed, and run all
+cells with Python 3.11+. Statistical NetworkX projections are used only for
+connectivity/degree analysis; the navigation backend uses RDFLib.
 
-1. Upload/mount the repository including `src/kg_rlvr/` and the existing saved
-   graph/QA files. No editable installation or internet connection is required.
-2. Import the notebook and select a Python 3.11+ CPU environment. Set
-   `PROJECT_ROOT_OVERRIDE` to the mounted directory containing `src/`, and set
-   `DATA_DIR_OVERRIDE` if graph data is mounted separately.
-3. Keep outputs under `/kaggle/working/kg_rlvr_eda/` (the automatic Kaggle default),
-   then run all cells. The first import cell lists installed package versions;
-   missing analysis dependencies must be available in the notebook environment.
-4. Trust the notebook to use embedded HTML/JavaScript. If the frontend strips
-   iframe scripts or does not support widgets, use `ENTITY_ID`, `ENTITY_RADIUS`,
-   and `QUESTION_ID`, rerun their cells, and download/open the standalone HTML
-   exports from the Kaggle output panel. A running kernel is needed for widget
-   callbacks; exported HTML runs independently.
-
-Local derived artifacts are saved separately under `visualizations/eda/`:
-
-```text
-figures/    # 16 PNG charts, including a static bounded graph preview
-html/       # offline overview, entity neighborhood, question-path inspectors
-reports/    # summary.md, quality checks, split overlaps, question metrics,
-            # execution_report.json with input SHA-256 fingerprints
-```
-
-The notebook reuses `GraphIndex`, the discovery-gated reference executor, the
-existing in-memory validator, and the existing SVG/HTML renderer. Small reusable
-analysis helpers live in `src/kg_rlvr/eda.py`. The input dataset is fingerprinted
-before and after execution, including existing metadata reports. Output paths
-inside the dataset are refused. Missing optional metadata is reported; difficulty
-and paths are recomputed in memory where possible. The full catalog validator is
-marked unavailable if its required verifier metadata is absent.
-
-Leakage analysis separates exact query/text collisions from expected shared
-entities, answers, grammar, and compositions. A bounded, seeded lexical candidate
-screen avoids all-pairs comparisons and explicitly does not claim exhaustive
-paraphrase detection. Tool-call plots show measured gold-executor calls, not an
-invented estimate of model exploration. Browser rendering cannot be proved by
-headless Python execution: the notebook tests the question-control callback and
-exported answer/path coverage, while actual frontend rendering remains subject
-to the browser's permissions and notebook trust policy.
+The notebook fingerprints every input file before and after execution. Outputs
+inside the dataset are refused. Optional metadata is recomputed in memory where
+possible; the full validator is marked unavailable when required verification
+metadata is missing. Near-duplicate screening is a bounded lexical heuristic,
+not an exhaustive semantic comparison. Tool-call charts describe the gold
+executor, not measured model exploration.
 
 ## Kaggle GRPO training notebook
 
@@ -460,13 +422,19 @@ pass. See [the implementation report](docs/grpo_training_report.md).
 
 Use a fresh Kaggle Python 3.11/3.12 notebook:
 
-1. Attach the repository (including `src/kg_rlvr`, `requirements-grpo.txt`, and
-   saved `data/`) as an input dataset. Separate graph/QA mounts are supported.
-2. Import the notebook, select a T4 GPU and enable internet for dependencies and
-   the pinned model download. The notebook exposes only one GPU; two T4 memories
-   are not pooled.
-3. Set `PROJECT_ROOT_OVERRIDE` and `DATA_ROOT_OVERRIDE` in the configuration cell.
-   Outputs default to `/kaggle/working/` without a hardcoded dataset slug.
+1. Import the notebook, select a T4 GPU and enable internet for GitHub,
+   dependencies and the pinned model download. The notebook exposes only one
+   GPU; two T4 memories are not pooled.
+2. Leave `CLONE_REPOSITORY=True` and `PROJECT_ROOT_OVERRIDE=None`. On Kaggle the
+   configuration cell clones `https://github.com/AlirezaAK2000/kg-navigation-rlvr.git`
+   directly into the current folder, normally `/kaggle/working/`, with no
+   `kg-navigation-rlvr/` subfolder. A nonempty working folder is handled using a
+   temporary clone and a conflict-checked copy of its contents. Unrelated files
+   are preserved; existing project code is reused on reruns without pulling.
+3. Code and saved `data/` are obtained from GitHub. Set `DATA_ROOT_OVERRIDE` only
+   for a separately attached dataset. Alternatively disable cloning and set
+   `PROJECT_ROOT_OVERRIDE` to a mounted repository. Outputs default to
+   `/kaggle/working/` without a hardcoded dataset slug.
 4. If the pinned packages are absent, set `INSTALL_DEPENDENCIES=True` and run
    setup. It installs Torch 2.6.0 from the official cu124 index followed by
    `requirements-grpo.txt`. In this fresh language-model session it optionally
@@ -481,6 +449,9 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    To follow a completed smoke-only Run All with full training, restart with a
    new `RUN_NAME` and enable full training before Run All; export/reload has
    already released the previous trainers and made that adapter inference-only.
+   To review vanilla-model performance first, run through section 6 and stop,
+   or disable both smoke and full training before Run All. The baseline runs
+   with the LoRA adapter disabled; it is saved before any optimizer update.
 6. Inspect actual rewards, malformed calls, submissions, truncations, homogeneous
    groups and LoRA deltas. Sparse binary rewards can produce no learning signal;
    an all-zero/all-one smoke run is diagnosed rather than reported as success.

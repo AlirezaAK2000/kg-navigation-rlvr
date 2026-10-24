@@ -57,7 +57,7 @@ def build_statistics(graph, questions, validation, config, generation):
     question_relations = Counter(r for q in questions for r in q["relation_path"])
     answer_counts = Counter(tuple(q["answer_ids"]) for q in questions)
     branch = distribution([q["difficulty"]["branching_factor"] for q in questions])
-    all_response_sizes = [len(ns) for rels in graph.adjacency.values() for ns in rels.values()]
+    all_response_sizes = [len(ns) for entity in graph.entities for ns in graph.neighbor_map(entity).values()]
     warnings = []
     if len(components) > 1:
         warnings.append(f"Graph has {len(components)} weakly connected components.")

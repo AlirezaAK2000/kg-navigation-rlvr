@@ -38,10 +38,5 @@
     },
     "split_strategy": "instance"
   },
-  "seed": 1729,
-  "visualization": {
-    "max_edges": 220,
-    "max_nodes": 120,
-    "radius": 2
-  }
+  "seed": 1729
 }

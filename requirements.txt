@@ -1,2 +1,4 @@
-# The dataset pipeline and standalone HTML visualizer use only Python's stdlib.
+# Core RDF graph backend and development tests.
+rdflib==7.6.0
+pyparsing==3.2.3
 pytest>=7.4,<9

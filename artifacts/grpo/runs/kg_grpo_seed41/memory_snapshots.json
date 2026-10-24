@@ -1,7 +1,7 @@
 [
   {
     "stage": "before_model",
-    "system_available_gib": 0.7569427490234375,
+    "system_available_gib": 0.7520599365234375,
     "cuda_available": false,
     "allocated_gib": null,
     "reserved_gib": null,
