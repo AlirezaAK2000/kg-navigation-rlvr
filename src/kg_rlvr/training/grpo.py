@@ -270,6 +270,33 @@ def lora_snapshot(model):
     return {name: p.detach().cpu().clone() for name, p in model.named_parameters() if p.requires_grad and "lora_" in name}
 
 
+def smoke_diagnostics(output_dir):
+    """Read persisted evidence even after the live trainer has been released.
+
+    Gold answers stay in these post-rollout diagnostics, never model prompts.
+    Missing logs are normal if training failed before producing a rollout.
+    """
+    output_dir = Path(output_dir)
+    def read_rows(name):
+        path = output_dir / name
+        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
+
+    traces = read_rows("trajectories.jsonl")
+    groups = {}
+    for trace in traces:
+        groups.setdefault(trace["group_id"], []).append(trace["reward"])
+    homogeneous = sum(len(set(rewards)) == 1 for rewards in groups.values())
+    return {"episodes": len(traces), "groups": len(groups),
+            "mixed_reward_groups": len(groups) - homogeneous,
+            "group_rewards": groups,
+            "termination_reasons": dict(Counter(t["termination_reason"] for t in traces)),
+            "rollout_metrics": read_rows("rollout_metrics.jsonl"),
+            "trainer_metrics": read_rows("trainer_metrics.jsonl"),
+            "failed_examples": [{key: trace[key] for key in (
+                "question", "start_entity", "submitted_answer", "gold_answer_ids", "turns")}
+                for trace in traces if trace["reward"] == 0][:2]}
+
+
 def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1):
     import torch
     changed, max_change = [], 0.0

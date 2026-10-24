@@ -21,6 +21,7 @@ for inspection; actual Protégé frontend behavior was not tested in this sessio
 | Kaggle setup regression tests | 3 passed; missing/mismatched packages stop before backend imports; matching packages and local CPU preflight are accepted |
 | Model progress integration | 3 passed; evaluation counts, GRPO trajectory counts, unchanged episode results/RNG and honest failure completion, using scripted CPU unit fixtures |
 | QLoRA dtype regression | Real TRL constructor's quantized-model branch reproduced on a CPU metadata fixture; FP32 adapter values restored exactly; 3 CPU precision/GradScaler checks passed. Actual NF4/CUDA retry unverified |
+| Multi-hop prompt and smoke diagnostics | 30 focused host checks and 34 focused pinned-stack checks passed; private answer type/path isolation, zero reward for intermediate submissions, saved diagnostic replay, and real tokenizer/API checks. Revised 30-question validation prompts use 609–620 tokens against a 1,024-token limit. CPU notebook: 14 cells, zero errors. Pretrained GPU learning remains unverified |
 | Pretrained CUDA tool use, GRPO updates, VRAM and trained-adapter evaluation | Unverified; no CUDA GPU available |
 
 Each saved graph contains 2,000 entities and 5,000 navigation facts. Its complete

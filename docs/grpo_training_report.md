@@ -96,7 +96,7 @@ KL is unavailable, not reported as a measured zero.
 Microbatch 1, accumulation 4, one GPU and G=4 give four trajectories for one
 question per optimizer update. Accumulation 8 gives two question groups. The
 generation batch equals accumulation, which must be a positive multiple of G.
-Defaults are two smoke updates and an opt-in 30-update full phase.
+Defaults are eight smoke update attempts and an opt-in 30-update full phase.
 Training hops default to `[2, 3]`; any combination of `[2, 3, 4]` is allowed.
 Validation and test default to 30 separately selected questions each, balanced
 across the configured evaluation hops. Fixed IDs are saved before model loading.
@@ -170,9 +170,14 @@ The notebook's GPU smoke gate requires actual finite trainer metrics, positive
 gradient norm, changed LoRA tensors, graph-neighbor execution and a checkpoint
 containing adapter, optimizer, scheduler, trainer and RNG state. A homogeneous
 binary-reward group has zero advantage; if all sampled groups are homogeneous,
-the notebook fails the update gate and records the failure. Two steps can be
-insufficient for sparse rewards. Diagnose real logs before increasing smoke
-sampling or changing public limits; full training does not follow a failed gate.
+the notebook fails the update gate and records the failure. The default now
+samples eight groups (32 episodes at G=4 and accumulation 4)
+instead of two. The shared prompt emphasizes completing all relationships and
+checking the requested answer type, using only public question text and tool
+observations. Saved group rewards, metrics and failed trajectories are displayed
+on smoke failure and written to `smoke_diagnostics.json`, without requiring a live
+trainer. More samples cannot guarantee reward variation. Recompute the vanilla
+baseline with the same revised prompt; full training does not follow a failed gate.
 
 ## Exact Kaggle execution procedure
 

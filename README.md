@@ -439,7 +439,7 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    removes unused audio/vision packages whose compiled extensions can conflict
    with Torch. Restart if instructed, set installation back to `False`, then
    Run All.
-5. Defaults evaluate 30 validation questions and attempt two genuine GPU smoke
+5. Defaults evaluate 30 validation questions and attempt eight genuine GPU smoke
    steps. `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
    it explicitly for the initial 30 full-phase updates. Training defaults to
    hops `[2, 3]`; `[4]` or any combination remains configurable. Evaluation
@@ -453,6 +453,11 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
 6. Inspect actual rewards, malformed calls, submissions, truncations, homogeneous
    groups and LoRA deltas. Sparse binary rewards can produce no learning signal;
    an all-zero/all-one smoke run is diagnosed rather than reported as success.
+   The default smoke samples 32 episodes across eight groups. On failure it
+   displays group rewards, trainer metrics and failed trajectories, and saves
+   `smoke_diagnostics.json` under the run directory. The shared prompt emphasizes
+   completing the relationships in the question and checking the answer type.
+   After a prompt change, recompute the vanilla baseline with a fresh `RUN_NAME`.
 7. Download the adapter/diagnostics ZIP or save a Kaggle version with outputs.
    Save trainer checkpoints separately if you need resumption across sessions.
 

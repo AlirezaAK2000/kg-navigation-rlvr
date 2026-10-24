@@ -32,7 +32,7 @@
       "max_prompt_tokens": 1024,
       "max_context_tokens": 3072
     },
-    "smoke_steps": 2,
+    "smoke_steps": 8,
     "full_steps": 30,
     "save_steps": 10,
     "evaluate_every_steps": 0,
@@ -64,7 +64,7 @@
     "torch": "2.14.0",
     "cuda_runtime": null,
     "visible_cuda_devices": 0,
-    "system_available_gib": 0.7595062255859375
+    "system_available_gib": 0.7137298583984375
   },
   "dataset_valid": true,
   "source_files_unchanged": true,

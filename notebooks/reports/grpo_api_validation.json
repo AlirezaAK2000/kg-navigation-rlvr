@@ -33,8 +33,8 @@
   "tokenizer_model_id": "Qwen/Qwen3-1.7B",
   "tokenizer_revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
   "validation_sample_public_prompt_tokens": {
-    "min": 546,
-    "max": 557
+    "min": 609,
+    "max": 620
   },
   "trl_source_sha256": "52d9a6c1e298df35d0da4a6fa17874d750ee627f6ac15393c8860d74d1ba4917",
   "trl_uses_env_mask_as_tool_mask": true,
@@ -61,8 +61,8 @@
     "rdf.py": "1efd79fa4f969fe367189e00a2630b154f4ecfa068498d13500f5d3784ba96fc",
     "statistics.py": "a871b1be31574d141277ffd1c2f431228f596cde6a1c3b4ff70bfb732bce1947",
     "training/__init__.py": "f972ccb5d764494cff3f8af24a1f4533b117e433be803e75419dd640fa59aaf7",
-    "training/environment.py": "741dabecdf9059a7ef021cf2582124a98ed20608b92cda265f975223bef766f7",
-    "training/grpo.py": "45023d2f5666cea8af49f1f0e760b4492f03a353d5f0c60498d1cd9f4d28b2e3",
+    "training/environment.py": "e1bedc951d940c462c7c696439143a61d649994e839c5ad1eb48f6ccba536e01",
+    "training/grpo.py": "04d0134d45efc26e020672e91563e90d996235cbbed0dec33c2a1736827222d9",
     "training/rollouts.py": "a6faa48dcbeea074e6b0425d37b4f162c034c1d4dafc179bce2c47c78857e687",
     "validators.py": "76af506b8431afccc08b9f2cf0d38fd7b99dc191e4adcda689ffa9bd399797a7"
   },
@@ -134,5 +134,17 @@
     "actual_nf4_cuda_kernels_executed": false,
     "genuine_cuda_grpo_update_verified": false,
     "cuda_retry_required": true
+  },
+  "multihop_prompt_smoke_regression": {
+    "host_focused_tests_passed": 30,
+    "pinned_focused_tests_passed": 34,
+    "notebook_code_cells": 14,
+    "notebook_error_outputs": 0,
+    "default_smoke_steps": 8,
+    "default_smoke_sampled_episodes": 32,
+    "private_answer_type_and_path_isolation_checked": true,
+    "intermediate_submission_remains_zero_reward": true,
+    "persisted_diagnostics_without_live_trainer_checked": true,
+    "pretrained_gpu_learning_verified": false
   }
 }

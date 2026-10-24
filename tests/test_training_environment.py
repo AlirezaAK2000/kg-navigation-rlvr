@@ -81,11 +81,33 @@ def test_binary_rewards_use_actual_single_submissions(graph, questions):
     assert function(["claimed correct", "claimed wrong"], [q["id"], q["id"]], [None, q["answer_ids"][0]]) == [0.0, 1.0]
 
 
+def test_intermediate_submission_is_accepted_but_not_rewarded(graph):
+    # Graph/verifier regression fixture, not a model trajectory or training result.
+    start = "researcher_000000"
+    university = graph.get_neighbors(start, "works_at")[0]
+    city = graph.get_neighbors(university, "located_in_city")[0]
+    record = {"id": "unit_multihop", "start_entity": start,
+              "question": "Which city hosts the university where this researcher works?",
+              "answer_ids": [city]}
+    store = TaskStore(graph, [record])
+    early = GraphEnvironment(graph, start)
+    early.get_neighbors(start, "works_at")
+    assert early.submit_answer(university)["ok"]
+    assert store.reward(record["id"], early.submitted_answer) == 0.0
+    complete = GraphEnvironment(graph, start)
+    complete.get_neighbors(start, "works_at")
+    assert "located_in_city" in complete.get_relations(university)["relations"]
+    complete.get_neighbors(university, "located_in_city")
+    assert complete.submit_answer(city)["ok"]
+    assert store.reward(record["id"], complete.submitted_answer) == 1.0
+
+
 def test_private_verifier_changes_cannot_affect_prompts_or_tools(graph, questions):
     q = copy.deepcopy(questions[0])
     hidden = copy.deepcopy(q)
     hidden.update(answer_ids=["VERIFIER_SECRET_ANSWER"], relation_path=["VERIFIER_SECRET_PROGRAM"],
-                  gold_entity_paths=[["VERIFIER_SECRET_PATH"]], difficulty={"private": "VERIFIER_SECRET_DIFFICULTY"})
+                  gold_entity_paths=[["VERIFIER_SECRET_PATH"]], difficulty={"private": "VERIFIER_SECRET_DIFFICULTY"},
+                  answer_type="VERIFIER_SECRET_TYPE")
     assert public_prompt(graph, q) == public_prompt(graph, hidden)
     original = GraphEnvironment(graph, q["start_entity"])
     changed = GraphEnvironment(graph, hidden["start_entity"])

@@ -58,7 +58,11 @@ def public_prompt(graph, record, max_tool_calls=8):
     instruction = (
         "Navigate the fictional research graph to answer the question. Submit ONE correct entity ID using submit_answer; "
         "if several answers exist, any one is accepted. Use only discovered entities, beginning with the starting ID. "
+        "Identify the entity type requested by the question. Follow every relationship needed to answer the whole question; "
+        "a discovered neighbor may be an intermediate entity that requires further traversal. "
+        "Before submitting, check that the selected entity's type and the traversed relationships satisfy the question. "
         "get_relations lists available operations; get_neighbors returns all neighboring IDs, names and types. "
+        "Use get_relations on intermediate entities to discover how to continue. "
         "inv: means permitted inverse traversal. Previously discovered entities remain accessible. "
         f"You have at most {max_tool_calls} tool calls, including invalid calls and submission. "
         "Issue exactly one tool call per assistant turn using the supplied tool format. Stop after submitting."
