@@ -76,6 +76,18 @@ training KV caching is disabled. Bounded inference enables its own cache.
 T4 uses FP16; the BF16 test excludes emulation. Generation explicitly uses the
 same CUDA AMP dtype as training. These GPU paths remain unexecuted locally.
 
+The pinned TRL constructor unconditionally casts trainable quantized-model
+parameters to BF16, even for FP16 training. This caused the reported CUDA
+GradScaler failure on BF16 gradients. The integration now snapshots the small
+FP32 adapter before construction, restores FP32 storage and exact adapter values
+after construction, and checks precision before optimizer creation. Frozen NF4
+weights are untouched. Checks run again at training start after preparation or
+checkpoint loading and before each step. The notebook displays actual flags and
+adapter dtypes, with records in `precision_checks.jsonl`. Existing gradients cause
+repair to fail with a fresh-run instruction instead of being silently discarded.
+The behavior is confirmed in the [TRL 1.8.0 trainer source](https://github.com/huggingface/trl/blob/v1.8.0/trl/trainer/grpo_trainer.py);
+FP32 adapter storage follows [PEFT's AMP guidance](https://huggingface.co/docs/peft/developer_guides/troubleshooting#dtype-related-issues).
+
 AdamW uses learning rate 5e-6, constant scheduling, no weight decay and gradient
 clipping at 1. The TRL objective is explicitly `loss_type="grpo"`, group-scaled
 rewards, `num_iterations=1`, and `beta=0`. No KL/reference-model copy is needed;
@@ -134,6 +146,8 @@ invalid-action or path rewards. Acknowledgments do not expose correctness.
 | Isolated pinned-stack full suite | **72 passed in the isolated pinned environment**, including the 3 API checks; real TRL config/sampler/mask boundary, real Qwen BPE template, tiny CPU PEFT adapter save/reload |
 | Notebook execution | **14 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
 | Kaggle package setup regression suite | **3 passed**; reproduces missing TRL/bitsandbytes and version drift, verifies the section-1 gate and recovery instructions |
+| Model progress checks | **3 passed** with scripted CPU fixtures; real tqdm counters, evaluation/trajectory totals, unchanged episode results/RNG, and partial progress on errors |
+| Precision regression | Real TRL constructor's quantized-model dtype branch exercised on a small CPU architecture with a metadata flag; exact FP32 adapter restoration and late-recast rejection verified. Three CPU parameter/GradScaler tests pass; CUDA NF4/GRPO remains unverified |
 | Graph and QA loading | Existing 2,000 entities, 5,000 triples and 2,800 questions validated in memory |
 | Source preservation | All original QA/conversational records unchanged; graph format migrated to Turtle |
 | Python/notebook syntax | Supporting modules and every code cell compile |
@@ -161,6 +175,18 @@ insufficient for sparse rewards. Diagnose real logs before increasing smoke
 sampling or changing public limits; full training does not follow a failed gate.
 
 ## Exact Kaggle execution procedure
+
+`SHOW_PROGRESS=True` enables native model download/loading bars, prompt-processing
+counts, question counters for all evaluations and trajectory counters for GRPO
+generation batches. Tool-turn, executed-call and model-token status updates during
+each episode. Completed evaluation episodes update measured running accuracy and
+submission counts. The Trainer's optimizer-step bar is explicitly enabled;
+trajectory counts and optimizer steps have separate displays. Periodic evaluation
+uses the same question progress bar. Setting the flag to `False` hides the bars.
+The shared tqdm dependency selects notebook or terminal rendering automatically.
+Counters and error cleanup were checked with real tqdm text rendering and scripted
+CPU graph fixtures on tqdm 4.67.1 and 4.70.1. No fixture is reported as model output;
+Kaggle widget/GPU rendering remains unverified locally.
 
 `INSTALL_DEPENDENCIES=False` skips installation; Kaggle's preinstalled packages
 are not assumed to match the pins. If setup (or section 5 in an older notebook)

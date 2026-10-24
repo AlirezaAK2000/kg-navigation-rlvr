@@ -26,6 +26,13 @@ def test_real_installed_trainer_and_configuration_api(tmp_path):
     assert config.generation_batch_size == config.num_generations == 4
     assert config.per_device_train_batch_size == 1
     assert config.gradient_accumulation_steps == 4
+    assert config.disable_tqdm is False
+    quiet = make_grpo_args(tmp_path, 2, EpisodeLimits(), cpu=True, show_progress=False)
+    assert quiet.disable_tqdm is True
+    from transformers.utils import logging as transformers_logging
+    from huggingface_hub.utils import enable_progress_bars, disable_progress_bars
+    assert all(callable(f) for f in (transformers_logging.enable_progress_bar,
+        transformers_logging.disable_progress_bar, enable_progress_bars, disable_progress_bars))
     assert "rollout_func" in inspect.signature(trl.GRPOTrainer).parameters
     assert "tool_mask" in inspect.getsource(trl.GRPOTrainer._compute_loss)
     from types import SimpleNamespace
@@ -108,3 +115,51 @@ def test_real_peft_adapter_save_reload_on_tiny_cpu_fixture(tmp_path):
     after = {name: p.detach() for name, p in reloaded.named_parameters() if "lora_" in name}
     assert set(after) == set(before)
     assert all(torch.equal(before[name], after[name]) for name in before)
+
+
+def test_real_trl_quantized_branch_precision_repair_preserves_adapter_values(graph, questions, tmp_path, monkeypatch):
+    pinned()
+    directory = os.environ.get("KG_GRPO_TOKENIZER")
+    if not directory:
+        pytest.skip("Tokenizer fixture directory not provided")
+    import torch
+    from transformers import AutoTokenizer, Qwen3Config, Qwen3ForCausalLM
+    from peft import LoraConfig, get_peft_model
+    from kg_rlvr.training import grpo
+    from kg_rlvr.training.environment import EpisodeLimits, TaskStore
+    monkeypatch.setenv("HF_HUB_DISABLE_TELEMETRY", "1")
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("TRL_EXPERIMENTAL_SILENCE", "1")
+    base = Qwen3ForCausalLM(Qwen3Config(vocab_size=64, hidden_size=16, intermediate_size=32,
+        num_hidden_layers=1, num_attention_heads=2, num_key_value_heads=1, head_dim=8))
+    model = get_peft_model(base, LoraConfig(r=8, lora_alpha=16,
+        target_modules=grpo.LORA_TARGETS, task_type="CAUSAL_LM"))
+    with torch.no_grad():
+        for name, p in model.named_parameters():
+            if p.requires_grad:
+                p.fill_(0.1234567)  # not representable exactly in BF16
+    before = grpo.lora_snapshot(model)
+    frozen = {name: p.detach().clone() for name, p in model.named_parameters() if not p.requires_grad}
+    # Metadata flag ONLY: exercises the real TRL constructor's quantized-model
+    # dtype branch on a random CPU fixture, not actual NF4/CUDA quantization.
+    base.is_loaded_in_4bit = True
+    make_args = grpo.make_grpo_args
+    monkeypatch.setattr(grpo, "make_grpo_args", lambda *a, **kw: make_args(*a, cpu=True, **kw))
+    tokenizer = AutoTokenizer.from_pretrained(directory, local_files_only=True)
+    store = TaskStore(graph, questions)
+    trainer, _ = grpo.build_trainer(model, tokenizer, store, [questions[0]["id"]],
+        EpisodeLimits(), tmp_path, "cpu_precision_fixture", 2, show_progress=False)
+    assert trainer.optimizer is None
+    assert trainer.lora_precision["restored_tensors"] == len(before) > 0
+    assert trainer.lora_precision["preserved_lora_tensors"] == len(before)
+    assert grpo.assert_lora_fp32(trainer.model)["trainable_tensors"] == len(before)
+    assert all(torch.equal(before[name], trainer.model.get_parameter(name)) for name in before)
+    assert all(torch.equal(p, trainer.model.get_parameter(name)) for name, p in frozen.items())
+    callback = next(c for c in trainer.callback_handler.callbacks if type(c).__name__ == "MetricsCallback")
+    callback.on_train_begin(trainer.args, trainer.state, trainer.control, model=trainer.model)
+    callback.on_step_begin(trainer.args, trainer.state, trainer.control, model=trainer.model)
+    # A later unexpected recast is rejected before train/after checkpoint load.
+    changed = next(p for p in trainer.model.parameters() if p.requires_grad)
+    changed.data = changed.data.bfloat16()
+    with pytest.raises(RuntimeError, match="must be FP32"):
+        callback.on_train_begin(trainer.args, trainer.state, trainer.control, model=trainer.model)

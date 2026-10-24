@@ -191,19 +191,25 @@ def test_real_episode_execution_completion_feedback_and_independent_state(graph,
     def rollout_once():
         sequence = iter(range(1, len(actions) + 1))
         contexts = []
+        progress_events = []
         def sample(ids, budget):
             contexts.append(ids[:])
             return [next(sequence), 0]
-        ledger, trace = run_episode(store, q["id"], FixtureCodec(texts), sample, EpisodeLimits())
-        return ledger, trace, contexts
-    ledger, trace, contexts = rollout_once()
-    _, second, _ = rollout_once()
+        ledger, trace = run_episode(store, q["id"], FixtureCodec(texts), sample, EpisodeLimits(),
+                                    on_turn=lambda **event: progress_events.append(event))
+        return ledger, trace, contexts, progress_events
+    ledger, trace, contexts, events = rollout_once()
+    _, second, _, _ = rollout_once()
     assert trace["reward"] == second["reward"] == 1.0
     assert trace["submitted_answer"] == witness[-1] and trace["termination_reason"] == "submitted"
     assert len(contexts) == len(actions)  # no generation after terminal submission
     assert contexts[1] == [100, 1, 0, 200, 201]
     assert ledger.env_mask[:4] == [1, 1, 0, 0]
     assert summarize_episodes([trace])["accuracy"] == 1.0
+    assert [e["turn"] for e in events if e["status"] == "generating"] == list(range(1, len(actions) + 1))
+    assert events[-1] == {"task": q["id"], "turn": len(actions), "calls": len(actions),
+                          "tokens": trace["model_tokens"], "status": "submitted"}
+    assert not any("answer_ids" in event or "gold_entity_paths" in event for event in events)
 
 
 @pytest.mark.parametrize("tokens,reason", [([1], "completion_limit"), ([1, 0], "no_tool_call")])

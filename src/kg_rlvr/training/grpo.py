@@ -31,7 +31,7 @@ def native_bf16_supported():
 
 def dependency_versions():
     versions = {}
-    for name in [*PINS, "tokenizers", "huggingface-hub", "numpy", "pandas", "matplotlib", "psutil"]:
+    for name in [*PINS, "tokenizers", "huggingface-hub", "numpy", "pandas", "matplotlib", "psutil", "tqdm"]:
         try:
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
@@ -84,11 +84,60 @@ def memory_snapshot(stage):
     return row
 
 
-def load_qlora(model_name, revision, lora_r=8, lora_alpha=16):
+def assert_lora_fp32(model):
+    """Check optimizer storage precision, separately from NF4/AMP compute dtype."""
+    import torch
+    trainable = [(name, p) for name, p in model.named_parameters() if p.requires_grad]
+    if not trainable:
+        raise RuntimeError("No trainable LoRA parameters; load a trainable adapter before GRPO")
+    unexpected = [name for name, _ in trainable if "lora_" not in name]
+    if unexpected:
+        raise RuntimeError(f"Non-LoRA parameters require gradients: {unexpected[:5]}")
+    bad = {name: str(p.dtype) for name, p in trainable if p.dtype != torch.float32}
+    if bad:
+        raise RuntimeError(
+            "LoRA optimizer parameters must be FP32, including when AMP compute is FP16/BF16. "
+            "TRL 1.8.0 casts quantized-model adapters to BF16 during construction; restore "
+            "FP32 AFTER constructing GRPOTrainer and BEFORE creating the optimizer. "
+            "Restart a failed run with a fresh trainer. Incorrect dtypes: " + json.dumps(bad))
+    return {"trainable_dtype": "torch.float32", "trainable_tensors": len(trainable),
+            "trainable_parameters": sum(p.numel() for _, p in trainable)}
+
+
+def restore_lora_fp32(model):
+    """Repair TRL's QLoRA BF16 cast without converting frozen/quantized weights.
+
+    Call only before optimizer creation/backward. Existing gradients indicate a
+    failed/in-progress run and must not be silently discarded by this helper.
+    """
+    import torch
+    trainable = [(name, p) for name, p in model.named_parameters() if p.requires_grad]
+    if any("lora_" not in name for name, _ in trainable):
+        raise RuntimeError("Refusing to cast trainable non-LoRA parameters")
+    if any(p.grad is not None for _, p in trainable):
+        raise RuntimeError("Existing gradients found; restart with a fresh model/trainer before repairing LoRA precision")
+    changed = 0
+    with torch.no_grad():
+        for _, p in trainable:
+            if p.dtype != torch.float32:
+                p.data = p.data.to(dtype=torch.float32)
+                changed += 1
+    return {**assert_lora_fp32(model), "restored_tensors": changed}
+
+
+def load_qlora(model_name, revision, lora_r=8, lora_alpha=16, show_progress=True):
     assert_training_stack()
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    from transformers.utils import logging as transformers_logging
+    from huggingface_hub.utils import enable_progress_bars, disable_progress_bars
     from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+    if show_progress:
+        enable_progress_bars()
+        transformers_logging.enable_progress_bar()
+    else:
+        disable_progress_bars()
+        transformers_logging.disable_progress_bar()
     if torch.cuda.device_count() != 1:
         raise RuntimeError("Expose exactly one GPU before importing torch; T4 memories are not combined")
     dtype = torch.bfloat16 if native_bf16_supported() else torch.float16
@@ -108,15 +157,15 @@ def load_qlora(model_name, revision, lora_r=8, lora_alpha=16):
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True,
                 gradient_checkpointing_kwargs={"use_reentrant": False})
     model = get_peft_model(model, LoraConfig(r=lora_r, lora_alpha=lora_alpha, lora_dropout=0.0,
-                   target_modules=LORA_TARGETS, bias="none", task_type="CAUSAL_LM"))
-    if any(p.requires_grad and "lora_" not in name for name, p in model.named_parameters()):
-        raise RuntimeError("A non-LoRA parameter unexpectedly requires gradients")
+                   target_modules=LORA_TARGETS, bias="none", task_type="CAUSAL_LM"),
+                   autocast_adapter_dtype=True)
+    restore_lora_fp32(model)
     model.print_trainable_parameters()
     return model, tokenizer, dtype
 
 
 def make_grpo_args(output_dir, steps, limits, generations=4, accumulation=4, learning_rate=5e-6,
-                   save_steps=10, seed=41, cpu=False):
+                   save_steps=10, seed=41, cpu=False, show_progress=True):
     from trl import GRPOConfig
     if steps < 1 or save_steps < 1:
         raise ValueError("Training and checkpoint intervals must be positive")
@@ -136,18 +185,25 @@ def make_grpo_args(output_dir, steps, limits, generations=4, accumulation=4, lea
         logging_steps=1, logging_nan_inf_filter=False, save_strategy="steps", save_steps=save_steps,
         save_total_limit=2, save_only_model=False,
         eval_strategy="no", report_to=[], seed=seed, data_seed=seed, dataloader_num_workers=0,
-        log_completions=False)
+        log_completions=False, disable_tqdm=not show_progress)
     unsupported = set(kwargs) - GRPOConfig.__dataclass_fields__.keys()
     if unsupported:
         raise RuntimeError(f"Unsupported pinned GRPOConfig arguments: {unsupported}")
     return GRPOConfig(**kwargs)
 
 
-def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=None, limits=None, eval_every=0):
+def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=None, limits=None, eval_every=0,
+                          show_progress=True):
     from transformers import TrainerCallback
     output_dir = Path(output_dir)
     class MetricsCallback(TrainerCallback):
+        def on_train_begin(self, args, state, control, model=None, **kwargs):
+            # Runs after Trainer/Accelerate preparation and checkpoint loading.
+            append_jsonl(output_dir / "precision_checks.jsonl", {"stage": "train_begin",
+                "fp16": args.fp16, "bf16": args.bf16, **assert_lora_fp32(model)})
+
         def on_step_begin(self, args, state, control, **kwargs):
+            assert_lora_fp32(kwargs["model"])
             self.started = time.perf_counter()
 
         def on_step_end(self, args, state, control, model=None, **kwargs):
@@ -155,7 +211,8 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
                 "step_seconds": time.perf_counter() - self.started, **memory_snapshot("optimizer_step")})
             if eval_every and state.global_step % eval_every == 0 and eval_task_ids:
                 evaluate_policy(model, tokenizer, store, eval_task_ids, limits,
-                                output_dir / "periodic_evaluation", f"step_{state.global_step}")
+                                output_dir / "periodic_evaluation", f"step_{state.global_step}",
+                                show_progress=show_progress, progress_position=1)
 
         def on_log(self, args, state, control, logs=None, **kwargs):
             logs = logs or {}
@@ -168,20 +225,44 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
 
 def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, steps,
                   generations=4, accumulation=4, learning_rate=5e-6, save_steps=10, seed=41,
-                  eval_task_ids=None, eval_every=0):
+                  eval_task_ids=None, eval_every=0, show_progress=True):
     from datasets import Dataset
     from trl import GRPOTrainer
     if len(task_ids) < accumulation // generations:
         raise ValueError("Not enough unique training rows for one complete GRPO generation batch")
-    args = make_grpo_args(output_dir, steps, limits, generations, accumulation, learning_rate, save_steps, seed)
+    assert_lora_fp32(model)
+    args = make_grpo_args(output_dir, steps, limits, generations, accumulation, learning_rate, save_steps, seed,
+                          show_progress=show_progress)
     dataset = Dataset.from_list([{"prompt": store.prompt(task_id)} for task_id in task_ids])
     assert dataset.column_names == ["prompt"]
-    rollout = GRPORollout(store, tokenizer, limits, output_dir, phase)
-    callback = make_metrics_callback(output_dir, store, tokenizer, eval_task_ids, limits, eval_every)
+    rollout = GRPORollout(store, tokenizer, limits, output_dir, phase, show_progress=show_progress)
+    callback = make_metrics_callback(output_dir, store, tokenizer, eval_task_ids, limits, eval_every,
+                                     show_progress=show_progress)
     # No `tools` / `environment_factory`: those would trigger TRL's independent
     # tool loop and could execute our already-executed actions a second time.
+    adapter_before_init = lora_snapshot(model)
     trainer = GRPOTrainer(model=model, processing_class=tokenizer, args=args, train_dataset=dataset,
                 reward_funcs=make_reward(store), rollout_func=rollout, callbacks=[callback])
+    # TRL 1.8.0 unconditionally casts trainable quantized-model parameters to
+    # BF16, even for args.fp16=True. FP16 GradScaler cannot unscale BF16 grads.
+    # Restore only LoRA storage AFTER __init__, before its lazy optimizer exists.
+    if trainer.optimizer is not None:
+        raise RuntimeError("Precision repair requires trainer construction before optimizer creation")
+    trainer.lora_precision = restore_lora_fp32(trainer.model)
+    # A dtype round trip alone cannot recover FP32 values rounded to BF16.
+    # Preserve the warm-start adapter exactly across the constructor as well.
+    import torch
+    after = {name: p for name, p in trainer.model.named_parameters() if p.requires_grad}
+    if after.keys() != adapter_before_init.keys():
+        raise RuntimeError("Trainer changed the set of trainable LoRA parameters")
+    with torch.no_grad():
+        for name, p in after.items():
+            p.copy_(adapter_before_init[name])
+    trainer.lora_precision["preserved_lora_tensors"] = len(adapter_before_init)
+    append_jsonl(Path(output_dir) / "precision_checks.jsonl", {"stage": "after_trainer_init",
+        "fp16": args.fp16, "bf16": args.bf16,
+        "scaler": type(trainer.accelerator.scaler).__name__ if trainer.accelerator.scaler is not None else None,
+        **trainer.lora_precision})
     return trainer, rollout
 
 
@@ -214,7 +295,8 @@ def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1
         raise RuntimeError("Smoke checkpoint has no RNG state for resumption")
     return {"optimizer_steps": trainer.state.global_step, "changed_lora_tensors": len(changed),
             "max_lora_weight_delta": max_change, "finite_losses": True,
-            "checkpoint": str(checkpoints[-1]), **memory_snapshot("verified_smoke_update")}
+            "checkpoint": str(checkpoints[-1]), "precision": assert_lora_fp32(model),
+            **memory_snapshot("verified_smoke_update")}
 
 
 def training_manifest(model_name, revision, limits, task_ids, generations, accumulation, learning_rate, seed, r=8, alpha=16):
@@ -223,6 +305,7 @@ def training_manifest(model_name, revision, limits, task_ids, generations, accum
             "task_ids": task_ids, "num_generations": generations, "gradient_accumulation_steps": accumulation,
             "learning_rate": learning_rate, "seed": seed, "lora_r": r, "lora_alpha": alpha,
             "lora_dropout": 0.0, "lora_targets": LORA_TARGETS, "beta": 0.0,
+            "trainable_parameter_dtype": "torch.float32",
             "loss_type": "grpo", "versions": dependency_versions(),
             "implementation_sha256": {str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest()
                                       for p in sorted(package.rglob("*.py"))}}

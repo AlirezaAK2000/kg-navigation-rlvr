@@ -473,6 +473,28 @@ importing the graph/ML backend, so missing TRL/bitsandbytes and version differen
 are reported there. For vanilla-baseline-only evaluation, use `RUN_BASELINE=True`,
 `RUN_SMOKE_TEST=False`, and `RUN_FULL_TRAINING=False`.
 
+`SHOW_PROGRESS=True` displays progress throughout model use. Downloads and weight
+loading use native Hugging Face bars; prompt checks and evaluations show completed
+questions, elapsed time and ETA. During each episode the status shows its question
+ID, generation turn, executed tool calls and generated-token count. Evaluation
+also displays measured running accuracy and submissions. GRPO sampling counts
+completed trajectories in each batch while the Trainer separately counts optimizer
+steps. The same display applies to periodic validation, held-out test and adapter
+reload evaluation. Set `SHOW_PROGRESS=False` to disable these bars. `tqdm`, already
+provided by TRL/datasets, chooses notebook widgets or a terminal display.
+
+If smoke training reports `_amp_foreach_non_finite_check_and_unscale_cuda` with
+`BFloat16`, the FP16 scaler encountered BF16 adapter gradients. TRL 1.8.0 casts
+trainable parameters on quantized models to BF16 in its constructor, even when
+FP16 is selected. `build_trainer` now restores FP32 LoRA parameters **after** that
+constructor and **before** optimizer creation, preserving the original adapter
+values exactly. The frozen NF4 base and hardware-selected compute dtype remain
+unchanged. Checks after Trainer preparation/checkpoint loading and before each
+step catch later dtype changes. Actual flags/dtypes appear in the notebook and
+`precision_checks.jsonl`. To retry a failed run, restart the Python kernel with
+the updated source and use a fresh `RUN_NAME`; old gradients/scaler state must
+not be reused. Keep FP16 computation on a T4.
+
 The rollout integration deliberately uses `rollout_func` rather than
 `environment_factory`: the inspected TRL 1.8.0 native tool loop does not consult
 our episode's submission state before generating again. The custom adapter stops

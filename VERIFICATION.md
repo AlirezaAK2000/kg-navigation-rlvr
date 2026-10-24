@@ -19,6 +19,8 @@ for inspection; actual Protégé frontend behavior was not tested in this sessio
 | EDA notebook | 22 code cells, zero errors, 15 statistical charts; no graph-renderer dependency |
 | GRPO notebook | 14 code cells, zero errors in CPU preflight; no graph-renderer dependency |
 | Kaggle setup regression tests | 3 passed; missing/mismatched packages stop before backend imports; matching packages and local CPU preflight are accepted |
+| Model progress integration | 3 passed; evaluation counts, GRPO trajectory counts, unchanged episode results/RNG and honest failure completion, using scripted CPU unit fixtures |
+| QLoRA dtype regression | Real TRL constructor's quantized-model branch reproduced on a CPU metadata fixture; FP32 adapter values restored exactly; 3 CPU precision/GradScaler checks passed. Actual NF4/CUDA retry unverified |
 | Pretrained CUDA tool use, GRPO updates, VRAM and trained-adapter evaluation | Unverified; no CUDA GPU available |
 
 Each saved graph contains 2,000 entities and 5,000 navigation facts. Its complete

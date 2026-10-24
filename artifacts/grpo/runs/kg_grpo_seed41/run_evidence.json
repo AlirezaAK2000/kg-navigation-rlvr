@@ -36,7 +36,8 @@
     "full_steps": 30,
     "save_steps": 10,
     "evaluate_every_steps": 0,
-    "seed": 41
+    "seed": 41,
+    "show_progress": true
   },
   "installed_versions": {
     "torch": "2.14.0",
@@ -55,14 +56,15 @@
     "tokenizers": "0.21.0",
     "huggingface-hub": "0.36.2",
     "matplotlib": "3.7.2",
-    "psutil": "5.9.0"
+    "psutil": "5.9.0",
+    "tqdm": "4.67.1"
   },
   "hardware": {
     "python": "3.11.5",
     "torch": "2.14.0",
     "cuda_runtime": null,
     "visible_cuda_devices": 0,
-    "system_available_gib": 0.752349853515625
+    "system_available_gib": 0.7595062255859375
   },
   "dataset_valid": true,
   "source_files_unchanged": true,

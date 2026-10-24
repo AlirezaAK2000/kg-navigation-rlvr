@@ -15,6 +15,13 @@ import time
 from .environment import GraphEnvironment, TOOL_SCHEMAS, parse_qwen_action, verify_group_prompts
 
 
+def progress_bar(total, description, *, unit="question", enabled=True, position=0, leave=True):
+    """Use notebook widgets when available and terminal bars otherwise."""
+    from tqdm.auto import tqdm
+    return tqdm(total=total, desc=description, unit=unit, disable=not enabled,
+                dynamic_ncols=True, position=position, leave=leave)
+
+
 class QwenChatCodec:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
@@ -75,7 +82,7 @@ class TokenLedger:
         assert len(self.env_mask) == len(self.completion_ids)
 
 
-def run_episode(store, task_id, codec, sample_turn, limits):
+def run_episode(store, task_id, codec, sample_turn, limits, on_turn=None):
     """sample_turn(context_ids, max_new_tokens) must return ACTUAL sampled IDs.
 
     Dependency injection supports scripted unit fixtures; those are never used
@@ -88,6 +95,11 @@ def run_episode(store, task_id, codec, sample_turn, limits):
         raise ValueError(f"Public prompt for {task_id} has {len(initial)} tokens > max_prompt_tokens={limits.max_prompt_tokens}; increase the explicit prompt/context budget")
     env = GraphEnvironment(store.graph, record["start_entity"], limits)
     ledger, turns = TokenLedger(initial, limits), []
+    def report(turn, status):
+        if on_turn is not None:
+            on_turn(task=task_id, turn=turn, calls=env.calls,
+                    tokens=sum(ledger.env_mask), status=status)
+
     started = time.perf_counter()
     for _ in range(limits.max_tool_calls):
         if env.done:
@@ -96,6 +108,7 @@ def run_episode(store, task_id, codec, sample_turn, limits):
         if budget <= 0:
             env._finish("completion_limit")
             break
+        report(len(turns) + 1, "generating")
         sampled = list(sample_turn(ledger.context_ids, budget))
         if not sampled:
             raise RuntimeError("Generation backend returned no action tokens; cannot construct a GRPO sample without fabricating tokens")
@@ -107,6 +120,7 @@ def run_episode(store, task_id, codec, sample_turn, limits):
         ledger.append(sampled, model_generated=True)
         text = codec.decode(sampled)
         turns.append({"raw_assistant": text, "model_tokens": len(sampled)})
+        report(len(turns), "generated")
         if sampled[-1] != codec.tokenizer.eos_token_id:
             env._finish("turn_token_limit" if len(sampled) == limits.max_turn_tokens else "completion_limit")
             break  # incomplete action is never executed
@@ -130,6 +144,7 @@ def run_episode(store, task_id, codec, sample_turn, limits):
         turns[-1]["observation_in_context"] = True
     if not env.done:
         env._finish("turn_limit")
+    report(len(turns), env.termination_reason)
     reward = store.reward(task_id, env.submitted_answer)
     trace = {"task_id": task_id, "question": record["question"], "start_entity": record["start_entity"],
              "hop_count": record["hop_count"], "split": record["split"], "prompt": prompt,
@@ -207,11 +222,12 @@ def summarize_episodes(traces):
 
 class GRPORollout:
     """Pinned TRL 1.8.0 rollout_func protocol, one output per ALREADY repeated row."""
-    def __init__(self, store, tokenizer, limits, output_dir, phase):
+    def __init__(self, store, tokenizer, limits, output_dir, phase, show_progress=True):
         self.store, self.codec, self.limits = store, QwenChatCodec(tokenizer), limits
         self.output_dir, self.phase = Path(output_dir), phase
         self.batch_count = 0
         self.last_traces = []
+        self.show_progress = show_progress
 
     def __call__(self, prompts, trainer):
         if trainer.accelerator.num_processes != 1:
@@ -221,14 +237,20 @@ class GRPORollout:
         model = trainer.accelerator.unwrap_model(trainer.model)
         sampler = transformer_sampler(model, self.codec.tokenizer, temperature=trainer.temperature, sample=True)
         ledgers, traces = [], []
-        with generation_mode(model):
+        step = trainer.state.global_step + 1
+        with generation_mode(model), progress_bar(
+                len(prompts), f"{self.phase} step {step}: sampling", unit="trajectory",
+                enabled=self.show_progress, position=1, leave=False) as progress:
             for prompt in prompts:
                 task_id = self.store.resolve_prompt(prompt)
-                ledger, trace = run_episode(self.store, task_id, self.codec, sampler, self.limits)
+                ledger, trace = run_episode(self.store, task_id, self.codec, sampler, self.limits,
+                                           on_turn=progress.set_postfix if self.show_progress else None)
                 ledgers.append(ledger)
                 traces.append(trace)
+                progress.set_postfix(completed=f"{len(traces)}/{len(prompts)}",
+                    reward=f"{sum(t['reward'] for t in traces) / len(traces):.3f}", refresh=False)
+                progress.update(1)
         self.batch_count += 1
-        step = trainer.state.global_step + 1
         for group_number, offset in enumerate(range(0, len(traces), group_size)):
             group = traces[offset:offset + group_size]
             assert len({t["task_id"] for t in group}) == 1
@@ -249,17 +271,25 @@ class GRPORollout:
                 "submitted_answers": [t["submitted_answer"] for t in traces]}
 
 
-def evaluate_policy(model, tokenizer, store, task_ids, limits, output_dir, label):
+def evaluate_policy(model, tokenizer, store, task_ids, limits, output_dir, label,
+                    show_progress=True, progress_position=0):
     """Same real tools/limits for base, trained, and reloaded adapters; no gold guidance."""
     import torch
     codec = QwenChatCodec(tokenizer)
     sampler = transformer_sampler(model, tokenizer, sample=False)
     traces = []
     cuda_devices = [model.get_input_embeddings().weight.device.index] if model.get_input_embeddings().weight.is_cuda else []
-    with torch.random.fork_rng(devices=cuda_devices), generation_mode(model):
+    with torch.random.fork_rng(devices=cuda_devices), generation_mode(model), progress_bar(
+            len(task_ids), label.replace("_", " "), enabled=show_progress,
+            position=progress_position) as progress:
         for task_id in task_ids:
-            _, trace = run_episode(store, task_id, codec, sampler, limits)
+            _, trace = run_episode(store, task_id, codec, sampler, limits,
+                                  on_turn=progress.set_postfix if show_progress else None)
             traces.append(trace)
+            progress.set_postfix(completed=f"{len(traces)}/{len(task_ids)}",
+                accuracy=f"{sum(t['reward'] for t in traces) / len(traces):.1%}",
+                submitted=f"{sum(t['submitted'] for t in traces)}/{len(traces)}", refresh=False)
+            progress.update(1)
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
     # Label-specific evaluation files are replaced on rerun, never source datasets.
