@@ -16,7 +16,7 @@ from pathlib import Path
 from rdflib import Graph
 
 from .ontology import operation_schema
-from .rdf import ENTITY, KG, decode_graph, encode_graph, ontology_graph
+from .rdf import ENTITY, KG, decode_graph, encode_graph
 
 
 class GraphIndex:
@@ -59,7 +59,6 @@ class GraphIndex:
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         self.rdf.serialize(destination=directory / "graph.ttl", format="turtle")
-        ontology_graph(self.relations).serialize(destination=directory / "ontology.ttl", format="turtle")
 
     def get_entity(self, entity_id):
         if entity_id not in self.entities:

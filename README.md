@@ -17,7 +17,6 @@ a GPU, external database, or network access once dependencies are installed.
 - `data/`: full dataset, **2,000 train + 300 validation + 500 test**.
 - `pilot_data/`: **100 questions**, split 70/10/20, using the same full-sized graph.
 - `data/graph/graph.ttl`: self-contained OWL ontology, labeled individuals and graph facts.
-- `data/graph/ontology.ttl`: OWL schema without the individuals.
 - `data/metadata/samples.md`: ten seeded random questions with complete answers,
   reference paths, and fresh executable verification.
 - `data/metadata/report.md` and `statistics.json`: readable and machine-readable reports.
@@ -65,7 +64,6 @@ data/
   config.json                    # fully resolved configuration
   graph/
     graph.ttl                    # OWL schema + individuals + asserted graph edges
-    ontology.ttl                 # OWL schema only; open either file in Protégé
   rl/
     train.jsonl                  # PRIVATE records, including verifier metadata
     validation.jsonl
@@ -107,7 +105,7 @@ prevent fact memorization. The same seed/configuration preserves IDs and names.
 
 Cardinalities below are from head to tail; “many:one” means a functional
 relation. Mandatory participation is independent of cardinality. Full logical
-constraints are exported as annotations in `ontology.ttl` and checked by `graph_errors`.
+constraints are exported as annotations in `graph.ttl` and checked by `graph_errors`.
 
 | Relation | Domain → range | Cardinality | Participation / constraint |
 |---|---|---|---|
@@ -277,8 +275,8 @@ multiplicity, templates, relations, duplicates, rejection reasons, and warnings.
 Open `data/graph/graph.ttl` using **File → Open** in Protégé. The file embeds the
 OWL ontology and all 2,000 individuals, readable labels, stable entity IDs and
 5,000 asserted graph edges. It needs no external ontology imports. Use Classes,
-Object properties and Individuals to inspect it. `ontology.ttl` contains just
-the schema. The custom HTML/SVG graph renderer and generated graph views have
+Object properties and Individuals to inspect it. The ontology and graph data
+are kept together in this single file. The custom HTML/SVG graph renderer and generated graph views have
 been removed; EDA distributions and training-metric plots remain in the notebooks.
 
 The namespace is `https://example.org/kg-navigation-rlvr/ontology#` (`kg:`), with
@@ -291,8 +289,8 @@ preserving the generation constraints and permitted inverse traversal settings.
 The inverse properties are schema declarations; the training backend queries
 incoming asserted edges without materializing inferred facts.
 
-`graph.ttl` is the authoritative self-contained dataset. `ontology.ttl` is a
-schema-only export for inspection. Edit the complete graph file when editing a
+`graph.ttl` is the single authoritative file for the ontology and graph data.
+Edit this file when editing a
 dataset in Protégé, save as Turtle, then validate it. The loader expects the
 project's stable IDs and schema annotations. The validator checks the versioned
 ontology and closed-world constraints; OWL domain/range and functional-property

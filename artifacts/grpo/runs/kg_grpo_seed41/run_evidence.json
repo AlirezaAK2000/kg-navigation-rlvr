@@ -62,14 +62,13 @@
     "torch": "2.14.0",
     "cuda_runtime": null,
     "visible_cuda_devices": 0,
-    "system_available_gib": 0.751953125
+    "system_available_gib": 0.7740936279296875
   },
   "dataset_valid": true,
   "source_files_unchanged": true,
   "source_sha256": {
     "config.json": "ea2a04e01d7f4460ec0daa66fd6c6a5e8e8c616210927638d9379a358b6dd4fe",
     "graph/graph.ttl": "e188ad899b6bb1c4e04b1a5954abb8bbf7b3cba5f0bee28d706e4ce3fbe9ae28",
-    "graph/ontology.ttl": "43c6f41a02a18a7f6ae749c2c0b300d97f375db2a370ec913de0ddc375c2e896",
     "metadata/query_programs.jsonl": "00aa25099a6ffb4456fb5e344f2ce45e135cdba5e01a744e3caac03b38802850",
     "metadata/report.md": "9184fb6864458481ab9c3ddcd121a1d4f9acbc96cbbcb73ada90e36096bdeef6",
     "metadata/samples.md": "472e67ab121204e238f7bd7841d1481ae9fe784a03d3f781af67dfb719191aaf",

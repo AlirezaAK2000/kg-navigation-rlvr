@@ -68,7 +68,7 @@
     "dataset_builder.py": "40dcdf43cebfbc130bde837f45522b508f0587f407faac780d5be561e78ee756",
     "eda.py": "5128def2ea0910f1beef22aefea6d9169a399c8ad59c119b1bf2e3160992f723",
     "graph_generator.py": "62b2d5e1e3619899b571a00ad2522fe81180efa49c59cb601d4415ebaccb258e",
-    "graph_index.py": "c7baf8c6e6e03b8d5d3d8ffcf5aeb4aa581d03616287d1e279222d8feec25f56",
+    "graph_index.py": "b069391105d90a00eaf1fa639da4419eaf7585c641acfd09648efb0895b56862",
     "ontology.py": "b6b3a63381781b16ebb0cc6a1f8a3bdc8df81a52c525f69c3b963cd4d5d6afa6",
     "query_generator.py": "45666fb85fc3de881d424745d14ed7420bcbc70af996ce52bef5079afd8ff781",
     "question_templates.py": "2c81bfe516208172765f81e0820eb18d0e8d9c41a5aef09d3c6a4d2198b84f0c",
@@ -79,5 +79,10 @@
     "training/grpo.py": "43a94a89527ed1f2efb3569e983bf9c6aaf24967f2fbe137378208ee040f025e",
     "training/rollouts.py": "c7508336668b32fd10f27872d7967e5d40004b583b63902378306ef1cd8894aa",
     "validators.py": "76af506b8431afccc08b9f2cf0d38fd7b99dc191e4adcda689ffa9bd399797a7"
-  }
+  },
+  "graph_files": [
+    "data/graph/graph.ttl",
+    "pilot_data/graph/graph.ttl"
+  ],
+  "single_file_graph_layout_verified": true
 }

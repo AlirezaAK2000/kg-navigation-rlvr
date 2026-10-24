@@ -10,8 +10,7 @@ plots remain available in the notebooks.
 
 - `data/graph/graph.ttl`: self-contained OWL schema plus all labeled individuals
   and asserted edges. Open this file for the full graph.
-- `data/graph/ontology.ttl`: schema only.
-- `pilot_data/graph/`: the same two exports for the pilot dataset.
+- `pilot_data/graph/graph.ttl`: the same combined export for the pilot dataset.
 
 Use **File → Open**, then inspect Classes, Object properties and Individuals.
 No remote ontology imports are required. The documents were parsed and queried
@@ -28,8 +27,8 @@ navigation edges and 2,000 individuals' metadata.
 
 The graph uses fictional identifiers under
 `https://example.org/kg-navigation-rlvr/`. These are RDF identifiers, not network
-resources that need to be fetched. The self-contained `graph.ttl` is authoritative;
-`ontology.ttl` is the separate schema export. When editing a dataset in Protégé,
+resources that need to be fetched. The self-contained `graph.ttl` is the single file for both ontology and data.
+When editing a dataset in Protégé,
 save the complete graph as Turtle and rerun validation. The project expects its
 stable IDs and schema annotations. Its closed-world constraints are still
 checked by Python; OWL reasoning is not a replacement for missing-value,
@@ -52,9 +51,9 @@ as `rdf:type` and `rdfs:label` are excluded from model navigation. Inverse calls
 query incoming asserted edges while preserving the existing `inv:` permissions.
 No inference, reward shaping or automatic answer shortcuts were introduced.
 
-Graph generation now writes `graph.ttl` and `ontology.ttl`. The loader still
+Graph generation writes only `graph.ttl`, containing both the ontology and data. The loader still
 accepts old JSON/TSV graph mounts as a compatibility input. The six legacy graph
-files in the repository were replaced by four Turtle files; the obsolete graph
+files in the repository were replaced by one Turtle file per dataset; the obsolete graph
 inspection status and visualization configuration were removed. QA records and
 public conversational exports retain their original bytes. Graph IDs, names,
 types, relation specifications, all 5,000 facts, question answers, reference

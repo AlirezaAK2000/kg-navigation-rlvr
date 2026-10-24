@@ -35,17 +35,15 @@ def test_callers_cannot_mutate_cached_lookup_results(graph):
 
 def test_turtle_contains_owl_schema_and_original_facts(graph, tmp_path):
     graph.save(tmp_path)
-    assert {p.name for p in tmp_path.iterdir()} == {"graph.ttl", "ontology.ttl"}
+    assert {p.name for p in tmp_path.iterdir()} == {"graph.ttl"}
     rdf = Graph().parse(tmp_path / "graph.ttl", format="turtle")
-    schema = Graph().parse(tmp_path / "ontology.ttl", format="turtle")
     assert (ONTOLOGY, RDF.type, OWL.Ontology) in rdf
-    assert set(schema) <= set(rdf)
     assert len(set(rdf.subjects(RDF.type, OWL.NamedIndividual))) == len(graph.entities)
-    assert len(set(schema.subjects(RDF.type, OWL.Class))) == 8
-    assert (KG.works_at, RDFS.domain, KG.researcher) in schema
-    assert (KG.works_at, RDF.type, OWL.FunctionalProperty) in schema
-    assert (KG.collaborates_with, RDF.type, OWL.SymmetricProperty) in schema
-    assert (KG.inverse_works_at, OWL.inverseOf, KG.works_at) in schema
+    assert len(set(rdf.subjects(RDF.type, OWL.Class))) == 8
+    assert (KG.works_at, RDFS.domain, KG.researcher) in rdf
+    assert (KG.works_at, RDF.type, OWL.FunctionalProperty) in rdf
+    assert (KG.collaborates_with, RDF.type, OWL.SymmetricProperty) in rdf
+    assert (KG.inverse_works_at, OWL.inverseOf, KG.works_at) in rdf
     assert (ENTITY.researcher_000000, RDFS.label, None) in rdf
     assert sum(len(list(rdf.triples((None, KG[r], None)))) for r in graph.relations) == len(graph.triples)
     assert not any(term in (tmp_path / "graph.ttl").read_text() for term in ("answer_ids", "gold_entity_paths", "relation_path"))
