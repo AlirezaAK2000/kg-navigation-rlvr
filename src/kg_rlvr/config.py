@@ -22,8 +22,8 @@ DEFAULT = {
         },
     },
     "questions": {
-        "split_counts": {"train": 2000, "validation": 300, "test": 500},
-        "hop_weights": {"2": 1, "3": 1, "4": 1},
+        "split_counts": {"train": 2667, "validation": 400, "test": 667},
+        "hop_weights": {"1": 1, "2": 1, "3": 1, "4": 1},
         "paraphrases_per_instance": 2,
         "min_branching_factor": 2.0,
         "max_answer_set_size": 8,
@@ -41,7 +41,9 @@ def merge(base, update):
     for key, value in update.items():
         if key not in result:
             raise ValueError(f"Unknown configuration key: {key}")
-        result[key] = merge(result[key], value) if isinstance(value, dict) and isinstance(result[key], dict) else value
+        # Hop weights are an explicit selection, not a patch to default hops.
+        result[key] = (copy.deepcopy(value) if key == "hop_weights" else
+                       merge(result[key], value) if isinstance(value, dict) and isinstance(result[key], dict) else value)
     return result
 
 
@@ -52,8 +54,8 @@ def load_config(path=None):
         raise ValueError("split_counts must contain train, validation, and test")
     if any(not isinstance(v, int) or v < 0 for v in q["split_counts"].values()):
         raise ValueError("Split counts must be nonnegative integers")
-    if set(q["hop_weights"]) != {"2", "3", "4"} or any(v <= 0 for v in q["hop_weights"].values()):
-        raise ValueError("All three hop categories must have positive weights")
+    if not q["hop_weights"] or set(q["hop_weights"]) - {"1", "2", "3", "4"} or any(v <= 0 for v in q["hop_weights"].values()):
+        raise ValueError("Selected hop categories must be from 1, 2, 3, 4 with positive weights")
     if q["split_strategy"] not in {"instance", "start_entity"}:
         raise ValueError("split_strategy must be instance or start_entity")
     if not 0 < q["holdout_program_fraction"] < 1:

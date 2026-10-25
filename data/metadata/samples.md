@@ -50,6 +50,18 @@ Verified reference paths:
 
 Complete answer set verified. Navigation branching: 5.00; reference tool calls: 7.
 
+## q_003695 · 1 hops · test
+
+Name the home city of University of Qorzhathae 0010.
+
+Answers: City of Thaekyrthae 0077 (`city_000076`).
+
+Verified reference paths:
+
+- University of Qorzhathae 0010 (`university_000009`) — **located_in_city** → City of Thaekyrthae 0077 (`city_000076`)
+
+Complete answer set verified. Navigation branching: 10.00; reference tool calls: 3.
+
 ## q_001580 · 4 hops · train
 
 Name the countries containing the home cities of universities where authors of Study Orvvexkyr 0255 work.
@@ -74,6 +86,30 @@ Verified reference paths:
 
 Complete answer set verified. Navigation branching: 5.00; reference tool calls: 5.
 
+## q_003672 · 1 hops · test
+
+In which city is University of Vexqorlym 0061 located?
+
+Answers: City of Zhaphazae 0058 (`city_000057`).
+
+Verified reference paths:
+
+- University of Vexqorlym 0061 (`university_000060`) — **located_in_city** → City of Zhaphazae 0058 (`city_000057`)
+
+Complete answer set verified. Navigation branching: 8.00; reference tool calls: 3.
+
+## q_002827 · 1 hops · train
+
+Name the field that Dr. Kyrithpha 0661 specializes in.
+
+Answers: Discipline Zaeorvith 0145 (`field_000144`).
+
+Verified reference paths:
+
+- Dr. Kyrithpha 0661 (`researcher_000660`) — **specializes_in** → Discipline Zaeorvith 0145 (`field_000144`)
+
+Complete answer set verified. Navigation branching: 2.00; reference tool calls: 3.
+
 ## q_001162 · 3 hops · train
 
 In which cities are the universities where the authors of Study Ithkyrorv 0237 work?
@@ -85,39 +121,3 @@ Verified reference paths:
 - Study Ithkyrorv 0237 (`publication_000236`) — **authored_by** → Dr. Zaephakyr 0223 (`researcher_000222`) — **works_at** → University of Phathaezha 0076 (`university_000075`) — **located_in_city** → City of Ithphavex 0147 (`city_000146`)
 
 Complete answer set verified. Navigation branching: 5.67; reference tool calls: 7.
-
-## q_002266 · 4 hops · validation
-
-Which countries contain the home cities of funders of the project behind Study Phazhaqor 0396?
-
-Answers: Republic of Kyrzaethae 0008 (`country_000007`).
-
-Verified reference paths:
-
-- Study Phazhaqor 0396 (`publication_000395`) — **produced_by** → Project Thaekyrzha 0201 (`project_000200`) — **funded_by** → Research Trust Qorithxel 0058 (`funder_000057`) — **based_in** → City of Phazaezha 0096 (`city_000095`) — **city_in_country** → Republic of Kyrzaethae 0008 (`country_000007`)
-
-Complete answer set verified. Navigation branching: 3.75; reference tool calls: 9.
-
-## q_001134 · 3 hops · train
-
-Which universities employ authors of publications cited by Study Vexkyrvex 0226?
-
-Answers: University of Ithithzha 0048 (`university_000047`).
-
-Verified reference paths:
-
-- Study Vexkyrvex 0226 (`publication_000225`) — **cites** → Study Vexphaith 0059 (`publication_000058`) — **authored_by** → Dr. Kyrlymxel 0594 (`researcher_000593`) — **works_at** → University of Ithithzha 0048 (`university_000047`)
-
-Complete answer set verified. Navigation branching: 5.33; reference tool calls: 7.
-
-## q_001571 · 4 hops · train
-
-In which countries are the home cities of universities employing at least one author of Study Zaezhaith 0149?
-
-Answers: Republic of Phathaepha 0041 (`country_000040`).
-
-Verified reference paths:
-
-- Study Zaezhaith 0149 (`publication_000148`) — **authored_by** → Dr. Zaelympha 0467 (`researcher_000466`) — **works_at** → University of Nuvithvex 0069 (`university_000068`) — **located_in_city** → City of Nuvkyrpha 0032 (`city_000031`) — **city_in_country** → Republic of Phathaepha 0041 (`country_000040`)
-
-Complete answer set verified. Navigation branching: 5.00; reference tool calls: 9.

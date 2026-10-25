@@ -90,6 +90,11 @@ def test_real_qwen_chat_template_boundary_and_token_mask(graph, questions):
     )
     output = GRPOTrainer._generate(probe, [store.prompt(q["id"])] * 4)
     assert output[2] == [ledger.env_mask] * 4
+    from kg_rlvr.training.inspection import render_traces_html
+    rendered = render_traces_html([trace], tokenizer=tokenizer)
+    assert "Full initial Qwen input" in rendered
+    assert "get_neighbors" in rendered and "submit_answer" in rendered
+    assert "&lt;tool_call&gt;" in rendered and "Tool response" in rendered
 
 
 def test_real_peft_adapter_save_reload_on_tiny_cpu_fixture(tmp_path):

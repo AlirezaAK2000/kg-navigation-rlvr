@@ -1,0 +1,196 @@
+{
+  "scope": "One-hop dataset extension, recorded model/tool inspection, and training-time evaluation reward reporting; CPU verification only",
+  "seed": 1729,
+  "graphs_unchanged": true,
+  "original_question_rows_unchanged": true,
+  "original_question_split_lines_are_exact_prefixes": true,
+  "original_conversation_lines_are_exact_prefixes": true,
+  "datasets": {
+    "data": {
+      "questions": 3734,
+      "original_rows_preserved": 2800,
+      "one_hop_questions_added": 934,
+      "counts_by_split_and_hop": {
+        "train": {
+          "1": 667,
+          "2": 667,
+          "3": 667,
+          "4": 666
+        },
+        "validation": {
+          "1": 100,
+          "2": 100,
+          "3": 100,
+          "4": 100
+        },
+        "test": {
+          "1": 167,
+          "2": 167,
+          "3": 167,
+          "4": 166
+        }
+      },
+      "graph_sha256": "e188ad899b6bb1c4e04b1a5954abb8bbf7b3cba5f0bee28d706e4ce3fbe9ae28",
+      "validation": {
+        "errors": [],
+        "pass_percentage": 100.0,
+        "passed": 3734,
+        "question_count": 3734,
+        "reproducibility_checked": true,
+        "reproducible": true,
+        "valid": true
+      }
+    },
+    "pilot_data": {
+      "questions": 135,
+      "original_rows_preserved": 100,
+      "one_hop_questions_added": 35,
+      "counts_by_split_and_hop": {
+        "train": {
+          "1": 24,
+          "2": 24,
+          "3": 23,
+          "4": 23
+        },
+        "validation": {
+          "1": 4,
+          "2": 4,
+          "3": 3,
+          "4": 3
+        },
+        "test": {
+          "1": 7,
+          "2": 7,
+          "3": 7,
+          "4": 6
+        }
+      },
+      "graph_sha256": "e188ad899b6bb1c4e04b1a5954abb8bbf7b3cba5f0bee28d706e4ce3fbe9ae28",
+      "validation": {
+        "errors": [],
+        "pass_percentage": 100.0,
+        "passed": 135,
+        "question_count": 135,
+        "reproducibility_checked": true,
+        "reproducible": true,
+        "valid": true
+      }
+    }
+  },
+  "qa_and_conversation_sha256": {
+    "data/rl/train.jsonl": "679f81a34d88c869162790d83bc21ea2977ab93b60ee763c0797cf6ee037cf1c",
+    "data/rl/test.jsonl": "5d8fabe2f63d5e0a2e9f8e70482ee7237cfefcde5ebc8b59d1cef2919e22e8b4",
+    "data/rl/validation.jsonl": "db95cc5742991ac0cadd65adcf295670b51db3495cb10cc2df97428c03462a4c",
+    "pilot_data/rl/train.jsonl": "c13ed039e37c0ed0de0bc7953904d276c94b24bf823683109659736376bcfc75",
+    "pilot_data/rl/test.jsonl": "57ee5f02df62ffb4e2050d5c578279c518425e3da3dced5a09d88b5892842bdf",
+    "pilot_data/rl/validation.jsonl": "376f92e5e52df492d40163e71a64a85f55df4cc4404f3da48a2b583e3d5c0a89",
+    "conversations/train.jsonl": "8d1eee4df80e66572fd7933079c614dcab2d192e3ec01388994c7402e579a3e3",
+    "conversations/test.jsonl": "bfcd29fd84b7277b8f6793004890ee481ad0ca2974264c93d77483799e96c2d7",
+    "conversations/validation.jsonl": "b98438dc04307f68f75a36dd8a3782ea09adb5731e4e591d403c86c201898d17"
+  },
+  "original_prefix_sha256": {
+    "data/rl/train.jsonl": "816f645127e1984a0288616297fa1532463114613f0674c445638a080cc7936a",
+    "data/rl/test.jsonl": "332d4c648122f043895a2701bf3d456db7c95702709b83facc54a5dbe773e167",
+    "data/rl/validation.jsonl": "79668cdbd8d7a5542aadca173cadb05065e29135632c4a0fe01d4f401e3b0995",
+    "pilot_data/rl/train.jsonl": "19712cf76ab18dd506235c74b5fbf9633cc5d422b4dfd0231f08ce5741e9a0e5",
+    "pilot_data/rl/test.jsonl": "4dcecc78e7140e0a0b09d466a9b5cebea62d4c52e566e4e9d92202307e5a3d9c",
+    "pilot_data/rl/validation.jsonl": "d9c2357c6619c4b271f2cf1c27fe04f98f1857bab68f49a07c7ef963c90f1c9e",
+    "conversations/train.jsonl": "eb3b3eb59a5842450d20c3e19402ed0549536987349c7790a55abb0a23f32b51",
+    "conversations/test.jsonl": "75cfa60524623931be6ea531fe8545553ae77caa3a3dc6558b4650c8b6fb67a2",
+    "conversations/validation.jsonl": "608e204f42b7c9d88855f240addf15eada687db1e8979d526006c90fcd1c8df4"
+  },
+  "test_suites": {
+    "host": {
+      "passed": 97,
+      "skipped": 4,
+      "skip_reason": "Optional pinned TRL API tests"
+    },
+    "isolated_pinned": {
+      "passed": 98,
+      "skipped": 1,
+      "skip_reason": "Optional notebook setup module requires nbformat, absent in isolated environment"
+    }
+  },
+  "one_hop_tests_passed": 8,
+  "inspection_renderer_tests_passed": 3,
+  "inspection_real_pinned_tokenizer_checked": true,
+  "inspection_browser_preview_checked": false,
+  "inspection_runs_additional_model_inference": false,
+  "notebooks": {
+    "eda": {
+      "code_cells": 22,
+      "error_outputs": 0,
+      "charts": 15,
+      "samples_per_hop": {
+        "1": 5,
+        "2": 5,
+        "3": 5,
+        "4": 5
+      }
+    },
+    "training": {
+      "code_cells": 18,
+      "error_outputs": 0,
+      "mode": "CPU preflight; no model inference/training"
+    }
+  },
+  "training_defaults": {
+    "train_hops": [
+      1,
+      2,
+      3
+    ],
+    "eval_hops": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "smoke_balanced_across_selected_hops": true,
+    "max_tool_calls": 12,
+    "inspection_examples": 3,
+    "inspection_offset": 0,
+    "evaluate_every_steps": 1,
+    "periodic_eval_size": 6
+  },
+  "all_public_prompt_tokens": {
+    "questions": 3734,
+    "min": 604,
+    "max": 625,
+    "limit": 1024
+  },
+  "implementation_sha256": {
+    "__init__.py": "a0fca7f6e0716dea06a19a0872d06371a36aa55890e36f3a00935804e0d38420",
+    "config.py": "a76a9386133580036cdce94dfb00df84ef061b716761dab855730de679b616a6",
+    "conversion.py": "8230e44af4164c9babeb65e5d5851b7c2e1106f9ddae069afe348901dbac7ead",
+    "dataset_builder.py": "0d2a15d8842c936f3cd4b12c839c20f9cd558a4b52ed20e75d155e6af3f55eea",
+    "eda.py": "5128def2ea0910f1beef22aefea6d9169a399c8ad59c119b1bf2e3160992f723",
+    "graph_generator.py": "62b2d5e1e3619899b571a00ad2522fe81180efa49c59cb601d4415ebaccb258e",
+    "graph_index.py": "b069391105d90a00eaf1fa639da4419eaf7585c641acfd09648efb0895b56862",
+    "ontology.py": "b6b3a63381781b16ebb0cc6a1f8a3bdc8df81a52c525f69c3b963cd4d5d6afa6",
+    "query_generator.py": "f3baea5b7bcd0dc4423f14701caf525c0d775c1787a3cf6359071f184866aeb8",
+    "question_templates.py": "c4e85f75d0e7b51ded75f7300d9e90c82eaad15c4a7dec0212246ec83e829faf",
+    "rdf.py": "1efd79fa4f969fe367189e00a2630b154f4ecfa068498d13500f5d3784ba96fc",
+    "statistics.py": "8b999b0a41b74d8783d245618e520d298775a808d3ba0b82e6f10b8ebf993741",
+    "training/__init__.py": "f972ccb5d764494cff3f8af24a1f4533b117e433be803e75419dd640fa59aaf7",
+    "training/environment.py": "696a2d8c3ddfa0e2fc60020c3907b127d740706550f04bc69769b238011d13f5",
+    "training/grpo.py": "4a474401d82dcd27f80c874165f0196d60aea1544dae39cba3f49ce66689d8dd",
+    "training/inspection.py": "649c6bb799eac00737ba81d7f374299f7e5f78db98ad9ff9eed82b8e6440e9f5",
+    "training/rollouts.py": "61cc2084efc74ec0b8d7a80192c7df83d016196a527313920a969159cfd5b95f",
+    "validators.py": "f2362722560646ddd1c53c597fb6e6262122fb4a10c4bcdb259f185ac72fdb98"
+  },
+  "genuine_cuda_grpo_update_verified": false,
+  "gpu_learning_effect_of_one_hop_questions_verified": false,
+  "periodic_evaluation_reward_validation": {
+    "progress_and_evaluation_checks_passed": 8,
+    "terminal_reward_zero_and_one_checked": true,
+    "phase_and_optimizer_step_tagging_checked": true,
+    "scheduled_and_disabled_evaluation_checked": true,
+    "completed_question_rewards_retained_after_later_failure": true,
+    "rng_and_model_mode_preserved": true,
+    "all_evaluations_write_per_question_reward_jsonl": true,
+    "validation_rewards_used_for_optimizer": false,
+    "genuine_gpu_run_verified": false,
+    "recorded_log_notebook_table_plot_export_fixture_checked": true
+  }
+}

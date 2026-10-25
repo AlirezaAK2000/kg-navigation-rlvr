@@ -41,30 +41,31 @@ Unique-neighbor node degree: mean 4.58, median 4.0, maximum 19.
 
 ## Questions
 
-| Split | 2 hops | 3 hops | 4 hops | Total |
-|---|---:|---:|---:|---:|
-| test | 7 | 7 | 6 | 20 |
-| train | 24 | 23 | 23 | 70 |
-| validation | 4 | 3 | 3 | 10 |
+| Split | 1 hop | 2 hops | 3 hops | 4 hops | Total |
+|---|---:|---:|---:|---:|---:|
+| test | 7 | 7 | 7 | 6 | 27 |
+| train | 24 | 24 | 23 | 23 | 94 |
+| validation | 4 | 4 | 3 | 3 | 14 |
 
-53 unique query instances; 19 relation compositions; 7 multi-answer questions.
-Answer-set sizes: mean 1.09, median 1.0, maximum 3.
-Branching: mean 5.61, median 5.71, maximum 7.67.
-Reference public tool calls: mean 7.36, maximum 15.
+71 unique query instances; 29 relation compositions; 7 multi-answer questions.
+Answer-set sizes: mean 1.07, median 1, maximum 3.
+Branching: mean 5.22, median 5.50, maximum 7.67.
+Reference public tool calls: mean 6.23, maximum 15.
 Duplicate question texts: 0; cross-split query-instance groups: 0.
 
 ## Cross-split overlap
 
 | Splits | Shared compositions | Shared starts | Shared reference entities |
 |---|---:|---:|---:|
-| test__train | 6 | 0 | 1 |
+| test__train | 8 | 0 | 5 |
 | test__validation | 2 | 0 | 4 |
-| train__validation | 6 | 0 | 3 |
+| train__validation | 7 | 0 | 3 |
 
 ## Generation filters
 
 Rejected candidates are counted by the first failed constraint; requested quotas are never silently reduced.
 
+- `1hop:empty_answer_set`: 1879
 - `2hop:empty_answer_set`: 412
 - `2hop:shorter_equivalent_answer_set`: 295
 - `3hop:empty_answer_set`: 18
@@ -76,6 +77,6 @@ Rejected candidates are counted by the first failed constraint; requested quotas
 
 - Stored relation frequencies differ by more than 10x; inspect the ontology and query coverage.
 - Template-generated language is finite. Ordinary splits share grammar, facts, entities and compositions; they do not rule out memorization or template exploitation.
-- Relations used as distractors but not in the current question catalog: collaborates_with, contributes_to, partners_with, publication_field, specializes_in, subfield_of.
+- Relations used as distractors but not in the current question catalog: collaborates_with, partners_with, publication_field, subfield_of.
 
 The intended hop count is the length of the executable relation program. Shorter equivalent answer-set programs are exhaustively excluded per start instance. This conservative extensional check is not a proof of arbitrary natural-language logical minimality. Unlabelled shortest graph distances and reference tool costs are stored separately. See statistics.json for full distributions and composition paths.

@@ -5,6 +5,7 @@
   },
   "generation": {
     "candidate_rejections": {
+      "1hop:empty_answer_set": 1879,
       "2hop:empty_answer_set": 412,
       "2hop:shorter_equivalent_answer_set": 295,
       "3hop:empty_answer_set": 18,
@@ -13,6 +14,7 @@
       "4hop:shorter_equivalent_answer_set": 313
     },
     "eligible_candidates_by_hop": {
+      "1": 5871,
       "2": 2943,
       "3": 2723,
       "4": 1725
@@ -20,16 +22,19 @@
     "heldout_program_ids": [],
     "quotas": {
       "test": {
+        "1": 167,
         "2": 167,
         "3": 167,
         "4": 166
       },
       "train": {
+        "1": 667,
         "2": 667,
         "3": 667,
         "4": 666
       },
       "validation": {
+        "1": 100,
         "2": 100,
         "3": 100,
         "4": 100
@@ -121,6 +126,9 @@
     "test__train": {
       "shared_composition_paths": [
         [
+          "authored_by"
+        ],
+        [
           "authored_by",
           "works_at"
         ],
@@ -136,8 +144,14 @@
           "city_in_country"
         ],
         [
+          "based_in"
+        ],
+        [
           "based_in",
           "city_in_country"
+        ],
+        [
+          "cites"
         ],
         [
           "cites",
@@ -155,6 +169,18 @@
           "located_in_city"
         ],
         [
+          "city_in_country"
+        ],
+        [
+          "collaborates_with"
+        ],
+        [
+          "contributes_to"
+        ],
+        [
+          "funded_by"
+        ],
+        [
           "funded_by",
           "based_in"
         ],
@@ -162,6 +188,9 @@
           "funded_by",
           "based_in",
           "city_in_country"
+        ],
+        [
+          "inv:authored_by"
         ],
         [
           "inv:investigates",
@@ -177,6 +206,15 @@
           "led_by",
           "works_at",
           "located_in_city"
+        ],
+        [
+          "inv:led_by"
+        ],
+        [
+          "inv:produced_by"
+        ],
+        [
+          "inv:works_at"
         ],
         [
           "inv:works_at",
@@ -194,6 +232,12 @@
           "based_in"
         ],
         [
+          "investigates"
+        ],
+        [
+          "led_by"
+        ],
+        [
           "led_by",
           "works_at"
         ],
@@ -209,8 +253,14 @@
           "city_in_country"
         ],
         [
+          "located_in_city"
+        ],
+        [
           "located_in_city",
           "city_in_country"
+        ],
+        [
+          "produced_by"
         ],
         [
           "produced_by",
@@ -228,6 +278,18 @@
           "city_in_country"
         ],
         [
+          "publication_field"
+        ],
+        [
+          "specializes_in"
+        ],
+        [
+          "subfield_of"
+        ],
+        [
+          "works_at"
+        ],
+        [
           "works_at",
           "located_in_city"
         ],
@@ -237,10 +299,10 @@
           "city_in_country"
         ]
       ],
-      "shared_compositions": 24,
-      "shared_reference_entities": 652,
-      "shared_relation_operations": 13,
-      "shared_start_entities": 116
+      "shared_compositions": 43,
+      "shared_reference_entities": 748,
+      "shared_relation_operations": 20,
+      "shared_start_entities": 166
     },
     "test__validation": {
       "shared_composition_paths": [
@@ -260,8 +322,14 @@
           "city_in_country"
         ],
         [
+          "based_in"
+        ],
+        [
           "based_in",
           "city_in_country"
+        ],
+        [
+          "cites"
         ],
         [
           "cites",
@@ -279,6 +347,15 @@
           "located_in_city"
         ],
         [
+          "city_in_country"
+        ],
+        [
+          "contributes_to"
+        ],
+        [
+          "funded_by"
+        ],
+        [
           "funded_by",
           "based_in"
         ],
@@ -286,6 +363,9 @@
           "funded_by",
           "based_in",
           "city_in_country"
+        ],
+        [
+          "inv:authored_by"
         ],
         [
           "inv:authored_by",
@@ -309,6 +389,15 @@
           "located_in_city"
         ],
         [
+          "inv:led_by"
+        ],
+        [
+          "inv:produced_by"
+        ],
+        [
+          "inv:works_at"
+        ],
+        [
           "inv:works_at",
           "inv:led_by"
         ],
@@ -322,6 +411,12 @@
           "inv:led_by",
           "funded_by",
           "based_in"
+        ],
+        [
+          "investigates"
+        ],
+        [
+          "led_by"
         ],
         [
           "led_by",
@@ -339,8 +434,14 @@
           "city_in_country"
         ],
         [
+          "located_in_city"
+        ],
+        [
           "located_in_city",
           "city_in_country"
+        ],
+        [
+          "produced_by"
         ],
         [
           "produced_by",
@@ -358,6 +459,12 @@
           "city_in_country"
         ],
         [
+          "specializes_in"
+        ],
+        [
+          "works_at"
+        ],
+        [
           "works_at",
           "located_in_city"
         ],
@@ -367,10 +474,10 @@
           "city_in_country"
         ]
       ],
-      "shared_compositions": 25,
-      "shared_reference_entities": 259,
-      "shared_relation_operations": 13,
-      "shared_start_entities": 21
+      "shared_compositions": 40,
+      "shared_reference_entities": 308,
+      "shared_relation_operations": 17,
+      "shared_start_entities": 34
     },
     "train__validation": {
       "shared_composition_paths": [
@@ -390,8 +497,14 @@
           "city_in_country"
         ],
         [
+          "based_in"
+        ],
+        [
           "based_in",
           "city_in_country"
+        ],
+        [
+          "cites"
         ],
         [
           "cites",
@@ -409,6 +522,15 @@
           "located_in_city"
         ],
         [
+          "city_in_country"
+        ],
+        [
+          "contributes_to"
+        ],
+        [
+          "funded_by"
+        ],
+        [
           "funded_by",
           "based_in"
         ],
@@ -416,6 +538,9 @@
           "funded_by",
           "based_in",
           "city_in_country"
+        ],
+        [
+          "inv:authored_by"
         ],
         [
           "inv:investigates",
@@ -431,6 +556,15 @@
           "led_by",
           "works_at",
           "located_in_city"
+        ],
+        [
+          "inv:led_by"
+        ],
+        [
+          "inv:produced_by"
+        ],
+        [
+          "inv:works_at"
         ],
         [
           "inv:works_at",
@@ -448,6 +582,12 @@
           "based_in"
         ],
         [
+          "investigates"
+        ],
+        [
+          "led_by"
+        ],
+        [
           "led_by",
           "works_at"
         ],
@@ -463,8 +603,14 @@
           "city_in_country"
         ],
         [
+          "located_in_city"
+        ],
+        [
           "located_in_city",
           "city_in_country"
+        ],
+        [
+          "produced_by"
         ],
         [
           "produced_by",
@@ -482,6 +628,12 @@
           "city_in_country"
         ],
         [
+          "specializes_in"
+        ],
+        [
+          "works_at"
+        ],
+        [
           "works_at",
           "located_in_city"
         ],
@@ -491,39 +643,45 @@
           "city_in_country"
         ]
       ],
-      "shared_compositions": 24,
-      "shared_reference_entities": 457,
-      "shared_relation_operations": 13,
-      "shared_start_entities": 74
+      "shared_compositions": 39,
+      "shared_reference_entities": 535,
+      "shared_relation_operations": 17,
+      "shared_start_entities": 102
     }
   },
   "questions": {
     "answer_set_sizes": {
-      "count": 2800,
+      "count": 3734,
       "histogram": {
-        "1": 2550,
-        "2": 120,
+        "1": 3432,
+        "2": 158,
         "3": 72,
         "4": 32,
         "5": 24,
-        "6": 2
+        "6": 2,
+        "7": 14
       },
-      "max": 6,
-      "mean": 1.1664285714285714,
+      "max": 7,
+      "mean": 1.1574718800214248,
       "median": 1.0,
       "p90": 1
     },
     "branching_factors": {
-      "count": 2800,
+      "count": 3734,
       "histogram": {
-        "3.0": 35,
+        "10.0": 20,
+        "11.0": 2,
+        "12.0": 2,
+        "15.0": 2,
+        "2.0": 154,
+        "3.0": 51,
         "3.4": 2,
         "3.5": 8,
         "3.6": 4,
         "3.7": 62,
         "3.8": 58,
         "3.9": 2,
-        "4.0": 194,
+        "4.0": 324,
         "4.1": 2,
         "4.2": 54,
         "4.3": 47,
@@ -533,14 +691,14 @@
         "4.7": 84,
         "4.8": 74,
         "4.9": 12,
-        "5.0": 510,
+        "5.0": 825,
         "5.1": 4,
         "5.2": 66,
         "5.3": 80,
         "5.5": 220,
         "5.7": 56,
         "5.8": 80,
-        "6.0": 307,
+        "6.0": 483,
         "6.2": 42,
         "6.3": 62,
         "6.4": 6,
@@ -549,7 +707,7 @@
         "6.7": 72,
         "6.8": 32,
         "6.9": 6,
-        "7.0": 116,
+        "7.0": 162,
         "7.1": 6,
         "7.2": 22,
         "7.3": 33,
@@ -558,38 +716,41 @@
         "7.7": 8,
         "7.8": 12,
         "7.9": 2,
-        "8.0": 28,
+        "8.0": 87,
         "8.2": 4,
         "8.3": 2,
         "8.5": 10,
         "8.7": 4,
         "8.8": 2,
-        "9.0": 4,
+        "9.0": 16,
         "9.5": 2
       },
-      "max": 9.5,
-      "mean": 5.4165846593882305,
-      "median": 5.25,
+      "max": 15.0,
+      "mean": 5.316399851710511,
+      "median": 5.0,
       "p90": 7.0
     },
     "compositions_per_split": {
-      "test": 25,
-      "train": 25,
-      "validation": 25
+      "test": 44,
+      "train": 45,
+      "validation": 40
     },
-    "count": 2800,
+    "count": 3734,
     "counts_by_split_and_hop": {
       "test": {
+        "1": 167,
         "2": 167,
         "3": 167,
         "4": 166
       },
       "train": {
+        "1": 667,
         "2": 667,
         "3": 667,
         "4": 666
       },
       "validation": {
+        "1": 100,
         "2": 100,
         "3": 100,
         "4": 100
@@ -616,6 +777,12 @@
       },
       {
         "answers": [
+          "country_000037"
+        ],
+        "count": 32
+      },
+      {
+        "answers": [
           "country_000019"
         ],
         "count": 30
@@ -623,12 +790,6 @@
       {
         "answers": [
           "country_000039"
-        ],
-        "count": 30
-      },
-      {
-        "answers": [
-          "country_000037"
         ],
         "count": 30
       },
@@ -652,30 +813,38 @@
       },
       {
         "answers": [
-          "country_000000"
+          "country_000007"
         ],
         "count": 28
       }
     ],
-    "multi_answer_questions": 250,
+    "multi_answer_questions": 302,
     "query_operation_counts": {
-      "authored_by": 967,
-      "based_in": 638,
-      "cites": 478,
-      "city_in_country": 1031,
-      "funded_by": 787,
-      "inv:authored_by": 6,
+      "authored_by": 1025,
+      "based_in": 650,
+      "cites": 552,
+      "city_in_country": 1071,
+      "collaborates_with": 8,
+      "contributes_to": 52,
+      "funded_by": 845,
+      "inv:authored_by": 52,
       "inv:investigates": 134,
-      "inv:led_by": 108,
-      "inv:works_at": 108,
-      "led_by": 497,
-      "located_in_city": 1405,
-      "produced_by": 473,
-      "works_at": 1766
+      "inv:led_by": 142,
+      "inv:produced_by": 52,
+      "inv:works_at": 122,
+      "investigates": 38,
+      "led_by": 547,
+      "located_in_city": 1431,
+      "partners_with": 2,
+      "produced_by": 541,
+      "publication_field": 53,
+      "specializes_in": 127,
+      "subfield_of": 16,
+      "works_at": 1872
     },
     "questions_with_multiple_program_walks": 6,
     "reference_tool_calls": {
-      "count": 2800,
+      "count": 3734,
       "histogram": {
         "11": 30,
         "12": 6,
@@ -691,6 +860,7 @@
         "25": 10,
         "27": 8,
         "28": 2,
+        "3": 934,
         "30": 6,
         "35": 16,
         "5": 870,
@@ -698,24 +868,83 @@
         "9": 840
       },
       "max": 35,
-      "mean": 7.855714285714286,
+      "mean": 6.641135511515801,
       "median": 7.0,
       "p90": 9
     },
     "shortest_answer_distances": {
-      "count": 3266,
+      "count": 4322,
       "histogram": {
-        "1": 2,
+        "1": 1058,
         "2": 1134,
         "3": 1136,
         "4": 994
       },
       "max": 4,
-      "mean": 2.9559093692590324,
-      "median": 3.0,
+      "mean": 2.4780194354465523,
+      "median": 2.0,
       "p90": 4
     },
     "template_counts": {
+      "p01_city_country:v1": 10,
+      "p01_city_country:v2": 17,
+      "p01_city_country:v3": 13,
+      "p01_field_parent:v1": 4,
+      "p01_field_parent:v2": 7,
+      "p01_field_parent:v3": 5,
+      "p01_funder_city:v1": 4,
+      "p01_funder_city:v2": 3,
+      "p01_funder_city:v3": 5,
+      "p01_project_fields:v1": 12,
+      "p01_project_fields:v2": 9,
+      "p01_project_fields:v3": 17,
+      "p01_project_funders:v1": 23,
+      "p01_project_funders:v2": 20,
+      "p01_project_funders:v3": 15,
+      "p01_project_leaders:v1": 20,
+      "p01_project_leaders:v2": 15,
+      "p01_project_leaders:v3": 15,
+      "p01_project_publications:v1": 16,
+      "p01_project_publications:v2": 19,
+      "p01_project_publications:v3": 17,
+      "p01_publication_authors:v1": 20,
+      "p01_publication_authors:v2": 24,
+      "p01_publication_authors:v3": 14,
+      "p01_publication_field:v1": 23,
+      "p01_publication_field:v2": 19,
+      "p01_publication_field:v3": 11,
+      "p01_publication_project:v1": 23,
+      "p01_publication_project:v2": 23,
+      "p01_publication_project:v3": 22,
+      "p01_publication_references:v1": 24,
+      "p01_publication_references:v2": 25,
+      "p01_publication_references:v3": 25,
+      "p01_researcher_collaborators:v1": 4,
+      "p01_researcher_collaborators:v2": 1,
+      "p01_researcher_collaborators:v3": 3,
+      "p01_researcher_employer:v1": 37,
+      "p01_researcher_employer:v2": 31,
+      "p01_researcher_employer:v3": 38,
+      "p01_researcher_led_projects:v1": 14,
+      "p01_researcher_led_projects:v2": 12,
+      "p01_researcher_led_projects:v3": 8,
+      "p01_researcher_projects:v1": 16,
+      "p01_researcher_projects:v2": 16,
+      "p01_researcher_projects:v3": 20,
+      "p01_researcher_publications:v1": 15,
+      "p01_researcher_publications:v2": 15,
+      "p01_researcher_publications:v3": 16,
+      "p01_researcher_specialty:v1": 46,
+      "p01_researcher_specialty:v2": 42,
+      "p01_researcher_specialty:v3": 39,
+      "p01_university_city:v1": 10,
+      "p01_university_city:v2": 9,
+      "p01_university_city:v3": 7,
+      "p01_university_employees:v1": 5,
+      "p01_university_employees:v2": 5,
+      "p01_university_employees:v3": 4,
+      "p01_university_partners:v2": 1,
+      "p01_university_partners:v3": 1,
       "p02_author_employer:v1": 35,
       "p02_author_employer:v2": 40,
       "p02_author_employer:v3": 36,
@@ -794,23 +1023,22 @@
       "p04_university_funder_city:v2": 17,
       "p04_university_funder_city:v3": 15
     },
-    "unique_compositions": 26,
-    "unique_query_instances": 1402
+    "unique_compositions": 46,
+    "unique_query_instances": 1870
   },
   "schema_version": 1,
   "seed": 1729,
   "validation": {
     "errors": [],
     "pass_percentage": 100.0,
-    "passed": 2800,
-    "question_count": 2800,
+    "passed": 3734,
+    "question_count": 3734,
     "reproducibility_checked": true,
     "reproducible": true,
     "valid": true
   },
   "warnings": [
     "Stored relation frequencies differ by more than 10x; inspect the ontology and query coverage.",
-    "Template-generated language is finite. Ordinary splits share grammar, facts, entities and compositions; they do not rule out memorization or template exploitation.",
-    "Relations used as distractors but not in the current question catalog: collaborates_with, contributes_to, partners_with, publication_field, specializes_in, subfield_of."
+    "Template-generated language is finite. Ordinary splits share grammar, facts, entities and compositions; they do not rule out memorization or template exploitation."
   ]
 }

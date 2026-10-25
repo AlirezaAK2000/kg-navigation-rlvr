@@ -24,8 +24,8 @@ The saved notebook outputs explicitly record these limits.
 | `README.md`, `src/kg_rlvr/__init__.py` | Usage, optional-training scope and limitations |
 
 The graph backend now uses RDFLib 7.6.0 and the saved graphs have been migrated
-to Turtle. All question and conversational JSONL records retain their original
-bytes, IDs, answers and paths. See [the RDF migration report](rdf_migration_report.md).
+to Turtle. The one-hop extension appends questions while all original question and
+conversational records retain their original bytes, IDs, answers and paths. See [the RDF migration report](rdf_migration_report.md).
 The notebook fingerprints its selected inputs before and after execution and
 reuses `GraphIndex`, `NavigationSession`, the question reader and in-memory
 validator. Graph inspection is through Protégé; custom HTML graph views have
@@ -97,11 +97,13 @@ Microbatch 1, accumulation 4, one GPU and G=4 give four trajectories for one
 question per optimizer update. Accumulation 8 gives two question groups. The
 generation batch equals accumulation, which must be a positive multiple of G.
 Defaults are eight smoke update attempts and an opt-in 30-update full phase.
-Training hops default to `[2, 3]`; any combination of `[2, 3, 4]` is allowed.
+Training hops default to `[1, 2, 3]`; any nonempty combination of `[1, 2, 3, 4]` is allowed.
+The smoke pool balances the selected training hop categories; full training samples
+from the selected mixed pool. One-hop questions use the same binary verifier.
 Validation and test default to 30 separately selected questions each, balanced
 across the configured evaluation hops. Fixed IDs are saved before model loading.
 
-Limits default to 8 tool calls, 128 model tokens per turn, 1,536 total completion
+Limits default to 12 tool calls, 128 model tokens per turn, 1,536 total completion
 tokens including observations, 1,024 prompt tokens and 3,072 total context tokens.
 Responses allow at most 16 neighbors and 4,000 characters. Oversized neighbor
 responses return an explicit error instead of silently hiding candidates.
@@ -144,11 +146,11 @@ invalid-action or path rewards. Acknowledgments do not expose correctness.
 |---|---|
 | Full local pytest suite | **69 passed, 3 skipped**; skips are optional pinned-stack tests in the ordinary environment |
 | Isolated pinned-stack full suite | **72 passed in the isolated pinned environment**, including the 3 API checks; real TRL config/sampler/mask boundary, real Qwen BPE template, tiny CPU PEFT adapter save/reload |
-| Notebook execution | **14 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
+| Notebook execution | **18 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
 | Kaggle package setup regression suite | **3 passed**; reproduces missing TRL/bitsandbytes and version drift, verifies the section-1 gate and recovery instructions |
-| Model progress checks | **3 passed** with scripted CPU fixtures; real tqdm counters, evaluation/trajectory totals, unchanged episode results/RNG, and partial progress on errors |
+| Model progress and evaluation reward checks | **8 passed** with scripted CPU fixtures; real tqdm counters, evaluation/trajectory totals, unchanged episode results/RNG, and partial progress on errors |
 | Precision regression | Real TRL constructor's quantized-model dtype branch exercised on a small CPU architecture with a metadata flag; exact FP32 adapter restoration and late-recast rejection verified. Three CPU parameter/GradScaler tests pass; CUDA NF4/GRPO remains unverified |
-| Graph and QA loading | Existing 2,000 entities, 5,000 triples and 2,800 questions validated in memory |
+| Graph and QA loading | Existing 2,000 entities, 5,000 triples and 3,734 questions validated in memory |
 | Source preservation | All original QA/conversational records unchanged; graph format migrated to Turtle |
 | Python/notebook syntax | Supporting modules and every code cell compile |
 | Pretrained Qwen inference/tool calls | **UNVERIFIED** |
@@ -264,3 +266,35 @@ configuration and load `PeftModel.from_pretrained(base, adapter_directory,
 is_trainable=False)`. Load the tokenizer from the adapter directory and use the
 repository's `evaluate_policy` for real graph-tool interaction. The notebook
 includes the corresponding loading instructions and a reload evaluation cell.
+
+## Recorded trajectory inspection
+
+Inspection cells follow baseline evaluation, training, and post-training evaluation.
+They use colored HTML cards with escaped text for each input message, raw model
+output, parsed tool call and tool response. Full native Qwen input (including
+tool schemas and chat tokens) is expandable. Each response is marked according
+to whether it was appended to the model context. `INSPECT_EXAMPLES` and
+`INSPECT_OFFSET` select a consecutive stored slice, without success-based ranking
+or additional inference. Training traces load from saved JSONL, so a live trainer
+is unnecessary. Empty CPU-only runs display an explicit absence of model traces.
+Renderer unit fixtures check escaping, turn order, error responses, selection,
+and trace immutability; the actual pinned tokenizer is checked separately.
+
+The current one-hop extension and inspection checks are recorded in
+[`one_hop_extension_validation.json`](../notebooks/reports/one_hop_extension_validation.json);
+earlier API and RDF migration reports retain their historical scope.
+
+## Reward reporting at training-time evaluation
+
+`EVALUATE_EVERY_STEPS=1` enables greedy evaluation of the same six fixed validation
+questions after each smoke/full optimizer step. Larger positive intervals reduce
+inference cost; zero disables periodic evaluation. The callback saves one summary
+and one reward row per completed question, tagged with phase and optimizer step,
+and prints mean reward, total reward, evaluated count and per-hop means. Progress
+shows the latest question reward and running mean. Mean reward equals accuracy
+under the unchanged binary final-answer verifier; tool turns have no reward.
+Evaluation preserves the training/evaluation mode and PyTorch RNG state and its
+rewards never enter the optimizer. The notebook displays a separate validation
+reward table/curve and exports consolidated JSONL in the run directory. Each
+baseline/final/reload evaluation also writes label-specific reward JSONL; streaming
+flushes preserve completed-question rewards if a later generation fails.

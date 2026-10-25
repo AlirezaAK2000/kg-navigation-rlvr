@@ -3,6 +3,8 @@
 import io
 import itertools
 import json
+from contextlib import redirect_stdout
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -105,3 +107,78 @@ def test_generation_failure_closes_progress_without_claiming_completion(progress
     bar, stream = bars[-1]
     assert bar.n == 0 and bar.disable  # real tqdm closes its display on exception
     assert "100%" not in stream.getvalue() and model.training
+
+
+@pytest.mark.parametrize("correct", [True, False])
+def test_evaluation_records_actual_terminal_rewards_and_training_step(progress_fixture, tmp_path, monkeypatch, correct):
+    store, q, model, bars = progress_fixture
+    if not correct:
+        codec = rollouts.QwenChatCodec(None)
+        original_decode = codec.decode
+        # A deliberately wrong but valid submission in a scripted unit fixture.
+        codec.decode = lambda ids: original_decode(ids).replace(q["gold_entity_paths"][0][-1], q["start_entity"])
+        monkeypatch.setattr(rollouts, "QwenChatCodec", lambda tokenizer: codec)
+    summary, traces = rollouts.evaluate_policy(model, None, store, [q["id"]] * 2,
+        EpisodeLimits(), tmp_path, "step_7", training_step=7)
+    rows = [json.loads(line) for line in (tmp_path / "step_7_rewards.jsonl").read_text().splitlines()]
+    expected = float(correct)
+    assert [r["reward"] for r in rows] == [t["reward"] for t in traces] == [expected, expected]
+    assert [r["evaluation_index"] for r in rows] == [1, 2]
+    assert all(r["training_step"] == 7 and r["task_id"] == q["id"] for r in rows)
+    assert summary["mean_reward"] == summary["accuracy"] == expected
+    assert summary["total_reward"] == 2 * expected
+    assert summary["mean_reward_by_hop"] == {str(q["hop_count"]): expected}
+    assert f"reward={int(expected)}" in bars[-1][1].getvalue()
+    assert f"mean_reward={expected:.3f}" in bars[-1][1].getvalue()
+
+
+@pytest.mark.parametrize("interval", [0, 2])
+def test_periodic_callback_logs_only_scheduled_evaluations(progress_fixture, tmp_path, interval, monkeypatch):
+    from kg_rlvr.training.grpo import make_metrics_callback
+    store, q, model, _ = progress_fixture
+    # HF lazily subclasses tqdm during import; import with the actual class,
+    # then restore the recording counter used for this unit fixture's episodes.
+    from tqdm.std import tqdm
+    with monkeypatch.context() as import_patch:
+        import_patch.setattr("tqdm.auto.tqdm", tqdm)
+        callback = make_metrics_callback(tmp_path / "smoke", store, None, [q["id"]] * 2,
+                                         EpisodeLimits(), eval_every=interval, show_progress=False)
+    state_before = torch.random.get_rng_state().clone()
+    stream = io.StringIO()
+    with redirect_stdout(stream):
+        for step in range(1, 5):
+            callback.started = time.perf_counter()
+            callback.on_step_end(None, SimpleNamespace(global_step=step), None, model=model)
+    summary_path = tmp_path / "smoke/evaluation_metrics.jsonl"
+    if not interval:
+        assert not summary_path.exists() and "evaluation |" not in stream.getvalue()
+    else:
+        summaries = [json.loads(line) for line in summary_path.read_text().splitlines()]
+        assert [s["step"] for s in summaries] == [2, 4]
+        assert all(s["mean_reward"] == 1 and s["total_reward"] == 2 for s in summaries)
+        rewards = [json.loads(line) for line in (tmp_path / "smoke/evaluation_rewards.jsonl").read_text().splitlines()]
+        assert [r["step"] for r in rewards] == [2, 2, 4, 4]
+        assert all(r["phase"] == "smoke" and r["training_step"] == r["step"] for r in rewards)
+        assert "optimizer step 2" in stream.getvalue() and "mean_reward=1.0000" in stream.getvalue()
+        assert len(list((tmp_path / "smoke/periodic_evaluation").glob("*_rewards.jsonl"))) == 2
+    assert model.training and torch.equal(state_before, torch.random.get_rng_state())
+
+
+def test_partial_evaluation_retains_completed_rewards_without_claiming_full_metrics(progress_fixture, tmp_path, monkeypatch):
+    store, q, model, _ = progress_fixture
+    original_sampler = rollouts.transformer_sampler(model, None)
+    calls = 0
+    def fail_in_second_episode(context, limit):
+        nonlocal calls
+        if calls == len(q["relation_path"]) + 1:
+            raise RuntimeError("unit failure after one completed evaluation episode")
+        calls += 1
+        return original_sampler(context, limit)
+    monkeypatch.setattr(rollouts, "transformer_sampler", lambda *args, **kwargs: fail_in_second_episode)
+    with pytest.raises(RuntimeError, match="after one completed"):
+        rollouts.evaluate_policy(model, None, store, [q["id"]] * 2, EpisodeLimits(),
+                                 tmp_path, "partial", training_step=3)
+    rows = [json.loads(line) for line in (tmp_path / "partial_rewards.jsonl").read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["reward"] == 1 and rows[0]["training_step"] == 3
+    assert not (tmp_path / "partial_metrics.json").exists()
+    assert model.training

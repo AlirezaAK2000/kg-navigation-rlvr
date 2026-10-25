@@ -113,7 +113,7 @@ def validate_dataset(graph, questions, config=None):
             check(all(a in graph.entities for a in answers), "Unknown answer entity")
             end_type = program_end_type(graph.entities[start]["type"], path, graph.relations)
             check(all(graph.entities[a]["type"] == end_type for a in answers), "Answer type mismatch")
-            check(q["hop_count"] == len(path) and len(path) in {2, 3, 4}, "Hop count mismatch")
+            check(q["hop_count"] == len(path) and len(path) in {1, 2, 3, 4}, "Hop count mismatch")
             program = PROGRAM_BY_ID[q["program_id"]]
             check(program.start_type == graph.entities[start]["type"] and list(program.relation_path) == path, "Program/template semantics mismatch")
             templates = {f"{program.id}:v{i + 1}": t for i, t in enumerate(program.templates)}

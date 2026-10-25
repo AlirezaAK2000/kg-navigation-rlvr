@@ -146,5 +146,7 @@
     "intermediate_submission_remains_zero_reward": true,
     "persisted_diagnostics_without_live_trainer_checked": true,
     "pretrained_gpu_learning_verified": false
-  }
+  },
+  "historical_scope_note": "This report records validation before the one-hop extension. Original file hashes identify the preserved prefixes; current expanded dataset/source checks are in one_hop_extension_validation.json.",
+  "current_validation_report": "one_hop_extension_validation.json"
 }

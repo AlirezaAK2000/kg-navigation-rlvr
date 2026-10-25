@@ -7,10 +7,12 @@
     "model_name": "Qwen/Qwen3-1.7B",
     "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
     "train_hops": [
+      1,
       2,
       3
     ],
     "eval_hops": [
+      1,
       2,
       3,
       4
@@ -24,7 +26,7 @@
     "lora_alpha": 16,
     "lora_dropout": 0.0,
     "limits": {
-      "max_tool_calls": 8,
+      "max_tool_calls": 12,
       "max_neighbors": 16,
       "max_observation_chars": 4000,
       "max_turn_tokens": 128,
@@ -35,7 +37,8 @@
     "smoke_steps": 8,
     "full_steps": 30,
     "save_steps": 10,
-    "evaluate_every_steps": 0,
+    "evaluate_every_steps": 1,
+    "periodic_eval_size": 6,
     "seed": 41,
     "show_progress": true
   },
@@ -64,21 +67,21 @@
     "torch": "2.14.0",
     "cuda_runtime": null,
     "visible_cuda_devices": 0,
-    "system_available_gib": 0.7137298583984375
+    "system_available_gib": 0.68927001953125
   },
   "dataset_valid": true,
   "source_files_unchanged": true,
   "source_sha256": {
-    "config.json": "ea2a04e01d7f4460ec0daa66fd6c6a5e8e8c616210927638d9379a358b6dd4fe",
+    "config.json": "9d8bb02d1b553054ed1eb3e61382607c81cd138755bcd9d4a5de807ffc10dc41",
     "graph/graph.ttl": "e188ad899b6bb1c4e04b1a5954abb8bbf7b3cba5f0bee28d706e4ce3fbe9ae28",
-    "metadata/query_programs.jsonl": "00aa25099a6ffb4456fb5e344f2ce45e135cdba5e01a744e3caac03b38802850",
-    "metadata/report.md": "9184fb6864458481ab9c3ddcd121a1d4f9acbc96cbbcb73ada90e36096bdeef6",
-    "metadata/samples.md": "472e67ab121204e238f7bd7841d1481ae9fe784a03d3f781af67dfb719191aaf",
-    "metadata/statistics.json": "e614b8c9612581e877b92fa6efbdc7fc9e373f749815817649e2900b2bed9dd3",
-    "metadata/validation.json": "7eabcf1cbe7be858973a827ced776fc2c839bd2440e3efdebd177b2a1511ad8e",
-    "rl/test.jsonl": "332d4c648122f043895a2701bf3d456db7c95702709b83facc54a5dbe773e167",
-    "rl/train.jsonl": "816f645127e1984a0288616297fa1532463114613f0674c445638a080cc7936a",
-    "rl/validation.jsonl": "79668cdbd8d7a5542aadca173cadb05065e29135632c4a0fe01d4f401e3b0995"
+    "metadata/query_programs.jsonl": "a883e9aec63083df4f687fa57140a5b770211764ee497e12a9b5b9bf938d8951",
+    "metadata/report.md": "5962d1db0c1b19ff80f5f1677da1bafc4073990c2d33334eb602112ce86d7d60",
+    "metadata/samples.md": "5c2daef59d024455264765568bc153d8b231ff9c5fdd7728cc870a4e312f804e",
+    "metadata/statistics.json": "558559f9d82799501f6d0931594f311149e8ce334b25f2bcb89c832692c57e4e",
+    "metadata/validation.json": "baa0443e42a99b5947ebcea63bb924d82213d6b356f98d355639d6aa63680dee",
+    "rl/test.jsonl": "5d8fabe2f63d5e0a2e9f8e70482ee7237cfefcde5ebc8b59d1cef2919e22e8b4",
+    "rl/train.jsonl": "679f81a34d88c869162790d83bc21ea2977ab93b60ee763c0797cf6ee037cf1c",
+    "rl/validation.jsonl": "db95cc5742991ac0cadd65adcf295670b51db3495cb10cc2df97428c03462a4c"
   },
   "graph_tool_contract_check_passed": true,
   "base_model_evaluation_performed": false,

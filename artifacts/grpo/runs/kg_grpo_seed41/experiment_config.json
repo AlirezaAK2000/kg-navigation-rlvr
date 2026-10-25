@@ -2,10 +2,12 @@
   "model_name": "Qwen/Qwen3-1.7B",
   "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
   "train_hops": [
+    1,
     2,
     3
   ],
   "eval_hops": [
+    1,
     2,
     3,
     4
@@ -19,7 +21,7 @@
   "lora_alpha": 16,
   "lora_dropout": 0.0,
   "limits": {
-    "max_tool_calls": 8,
+    "max_tool_calls": 12,
     "max_neighbors": 16,
     "max_observation_chars": 4000,
     "max_turn_tokens": 128,
@@ -30,7 +32,8 @@
   "smoke_steps": 8,
   "full_steps": 30,
   "save_steps": 10,
-  "evaluate_every_steps": 0,
+  "evaluate_every_steps": 1,
+  "periodic_eval_size": 6,
   "seed": 41,
   "show_progress": true
 }

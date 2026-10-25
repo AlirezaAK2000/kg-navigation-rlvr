@@ -12,6 +12,8 @@ def config():
     result = copy.deepcopy(DEFAULT)
     result["graph"].update(entity_count=240, triple_count=800)
     result["questions"]["split_counts"] = {"train": 42, "validation": 6, "test": 12}
+    # Retain the original multi-hop fixture; one-hop tests opt in explicitly.
+    result["questions"]["hop_weights"] = {"2": 1, "3": 1, "4": 1}
     return result
 
 

@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 
 from .environment import make_reward
-from .rollouts import GRPORollout, append_jsonl, evaluate_policy
+from .rollouts import GRPORollout, append_jsonl, evaluate_policy, evaluation_reward_record
 
 PINS = {"torch": "2.6.0", "transformers": "5.3.0", "trl": "1.8.0", "peft": "0.18.1",
         "accelerate": "1.10.1", "bitsandbytes": "0.49.2", "datasets": "4.8.3", "jmespath": "1.0.1",
@@ -210,9 +210,23 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
             append_jsonl(output_dir / "step_metrics.jsonl", {"step": state.global_step,
                 "step_seconds": time.perf_counter() - self.started, **memory_snapshot("optimizer_step")})
             if eval_every and state.global_step % eval_every == 0 and eval_task_ids:
-                evaluate_policy(model, tokenizer, store, eval_task_ids, limits,
-                                output_dir / "periodic_evaluation", f"step_{state.global_step}",
-                                show_progress=show_progress, progress_position=1)
+                label = f"step_{state.global_step}"
+                metrics, traces = evaluate_policy(model, tokenizer, store, eval_task_ids, limits,
+                                output_dir / "periodic_evaluation", label,
+                                show_progress=show_progress, progress_position=1,
+                                training_step=state.global_step)
+                append_jsonl(output_dir / "evaluation_metrics.jsonl",
+                             {"phase": output_dir.name, "step": state.global_step, **metrics})
+                for index, trace in enumerate(traces, 1):
+                    append_jsonl(output_dir / "evaluation_rewards.jsonl",
+                                 {"phase": output_dir.name, "step": state.global_step,
+                                  **evaluation_reward_record(trace, index, label, state.global_step)})
+                append_jsonl(output_dir / "trainer_metrics.jsonl", {"step": state.global_step,
+                    "eval_mean_reward": metrics["mean_reward"], "eval_total_reward": metrics["total_reward"],
+                    "eval_episodes": metrics["episodes"]})
+                print(f"[{output_dir.name} evaluation | optimizer step {state.global_step}] "
+                      f"mean_reward={metrics['mean_reward']:.4f}, total_reward={metrics['total_reward']:g}, "
+                      f"questions={metrics['episodes']}; mean_reward_by_hop={metrics['mean_reward_by_hop']}")
 
         def on_log(self, args, state, control, logs=None, **kwargs):
             logs = logs or {}

@@ -102,9 +102,9 @@ class TaskStore:
     def reward(self, task_id, submitted_answer):
         return float(submitted_answer in self._records[task_id]["answer_ids"])
 
-    def select(self, split, hops=(2, 3), count=None, seed=41, unique_instances=True, balanced=False):
-        if not hops or set(hops) - {2, 3, 4}:
-            raise ValueError("Choose at least one hop category from 2, 3, 4")
+    def select(self, split, hops=(1, 2, 3), count=None, seed=41, unique_instances=True, balanced=False):
+        if not hops or set(hops) - {1, 2, 3, 4}:
+            raise ValueError("Choose at least one hop category from 1, 2, 3, 4")
         rows = sorted((q for q in self._records.values() if q["split"] == split and q["hop_count"] in hops), key=lambda q: q["id"])
         if unique_instances:
             grouped = {}

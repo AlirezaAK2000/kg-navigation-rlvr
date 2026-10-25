@@ -5,6 +5,7 @@
   },
   "generation": {
     "candidate_rejections": {
+      "1hop:empty_answer_set": 1879,
       "2hop:empty_answer_set": 412,
       "2hop:shorter_equivalent_answer_set": 295,
       "3hop:empty_answer_set": 18,
@@ -13,6 +14,7 @@
       "4hop:shorter_equivalent_answer_set": 313
     },
     "eligible_candidates_by_hop": {
+      "1": 5871,
       "2": 2943,
       "3": 2723,
       "4": 1725
@@ -20,16 +22,19 @@
     "heldout_program_ids": [],
     "quotas": {
       "test": {
+        "1": 7,
         "2": 7,
         "3": 7,
         "4": 6
       },
       "train": {
+        "1": 24,
         "2": 24,
         "3": 23,
         "4": 23
       },
       "validation": {
+        "1": 4,
         "2": 4,
         "3": 3,
         "4": 3
@@ -137,9 +142,15 @@
           "located_in_city"
         ],
         [
+          "investigates"
+        ],
+        [
           "led_by",
           "works_at",
           "located_in_city"
+        ],
+        [
+          "works_at"
         ],
         [
           "works_at",
@@ -151,9 +162,9 @@
           "city_in_country"
         ]
       ],
-      "shared_compositions": 6,
-      "shared_reference_entities": 1,
-      "shared_relation_operations": 9,
+      "shared_compositions": 8,
+      "shared_reference_entities": 5,
+      "shared_relation_operations": 10,
       "shared_start_entities": 0
     },
     "test__validation": {
@@ -206,44 +217,48 @@
           "funded_by",
           "based_in",
           "city_in_country"
+        ],
+        [
+          "specializes_in"
         ]
       ],
-      "shared_compositions": 6,
+      "shared_compositions": 7,
       "shared_reference_entities": 3,
-      "shared_relation_operations": 9,
+      "shared_relation_operations": 10,
       "shared_start_entities": 0
     }
   },
   "questions": {
     "answer_set_sizes": {
-      "count": 100,
+      "count": 135,
       "histogram": {
-        "1": 93,
+        "1": 128,
         "2": 5,
         "3": 2
       },
       "max": 3,
-      "mean": 1.09,
-      "median": 1.0,
+      "mean": 1.0666666666666667,
+      "median": 1,
       "p90": 1
     },
     "branching_factors": {
-      "count": 100,
+      "count": 135,
       "histogram": {
-        "3.0": 2,
+        "2.0": 10,
+        "3.0": 4,
         "3.7": 1,
         "3.8": 2,
-        "4.0": 2,
+        "4.0": 6,
         "4.2": 2,
         "4.5": 6,
         "4.7": 2,
-        "5.0": 16,
+        "5.0": 28,
         "5.2": 3,
         "5.3": 2,
         "5.5": 6,
         "5.7": 6,
         "5.8": 7,
-        "6.0": 18,
+        "6.0": 25,
         "6.2": 2,
         "6.3": 2,
         "6.5": 6,
@@ -255,28 +270,31 @@
         "7.7": 1
       },
       "max": 7.666666666666667,
-      "mean": 5.612857142857143,
-      "median": 5.708333333333334,
-      "p90": 6.857142857142857
+      "mean": 5.224338624338625,
+      "median": 5.5,
+      "p90": 6.666666666666667
     },
     "compositions_per_split": {
-      "test": 9,
-      "train": 16,
-      "validation": 6
+      "test": 13,
+      "train": 24,
+      "validation": 7
     },
-    "count": 100,
+    "count": 135,
     "counts_by_split_and_hop": {
       "test": {
+        "1": 7,
         "2": 7,
         "3": 7,
         "4": 6
       },
       "train": {
+        "1": 24,
         "2": 24,
         "3": 23,
         "4": 23
       },
       "validation": {
+        "1": 4,
         "2": 4,
         "3": 3,
         "4": 3
@@ -327,6 +345,12 @@
       },
       {
         "answers": [
+          "university_000092"
+        ],
+        "count": 3
+      },
+      {
+        "answers": [
           "funder_000032"
         ],
         "count": 2
@@ -338,57 +362,81 @@
           "project_000203"
         ],
         "count": 2
-      },
-      {
-        "answers": [
-          "funder_000021"
-        ],
-        "count": 2
       }
     ],
     "multi_answer_questions": 7,
     "query_operation_counts": {
-      "authored_by": 34,
+      "authored_by": 38,
       "based_in": 14,
       "cites": 11,
-      "city_in_country": 35,
-      "funded_by": 22,
+      "city_in_country": 37,
+      "contributes_to": 2,
+      "funded_by": 26,
+      "inv:authored_by": 2,
       "inv:investigates": 6,
       "inv:led_by": 2,
+      "inv:produced_by": 2,
       "inv:works_at": 2,
+      "investigates": 3,
       "led_by": 20,
       "located_in_city": 58,
-      "produced_by": 19,
-      "works_at": 74
+      "produced_by": 21,
+      "specializes_in": 8,
+      "works_at": 80
     },
     "questions_with_multiple_program_walks": 0,
     "reference_tool_calls": {
-      "count": 100,
+      "count": 135,
       "histogram": {
         "13": 2,
         "15": 4,
+        "3": 35,
         "5": 33,
         "7": 32,
         "9": 29
       },
       "max": 15,
-      "mean": 7.36,
-      "median": 7.0,
+      "mean": 6.229629629629629,
+      "median": 5,
       "p90": 9
     },
     "shortest_answer_distances": {
-      "count": 109,
+      "count": 144,
       "histogram": {
+        "1": 35,
         "2": 41,
         "3": 40,
         "4": 28
       },
       "max": 4,
-      "mean": 2.8807339449541285,
-      "median": 3,
+      "mean": 2.423611111111111,
+      "median": 2.0,
       "p90": 4
     },
     "template_counts": {
+      "p01_city_country:v1": 1,
+      "p01_city_country:v2": 1,
+      "p01_project_fields:v1": 2,
+      "p01_project_fields:v3": 1,
+      "p01_project_funders:v1": 1,
+      "p01_project_funders:v2": 1,
+      "p01_project_funders:v3": 2,
+      "p01_project_publications:v1": 1,
+      "p01_project_publications:v3": 1,
+      "p01_publication_authors:v1": 2,
+      "p01_publication_authors:v2": 2,
+      "p01_publication_project:v1": 1,
+      "p01_publication_project:v3": 1,
+      "p01_researcher_employer:v1": 2,
+      "p01_researcher_employer:v2": 1,
+      "p01_researcher_employer:v3": 3,
+      "p01_researcher_projects:v1": 1,
+      "p01_researcher_projects:v3": 1,
+      "p01_researcher_publications:v2": 1,
+      "p01_researcher_publications:v3": 1,
+      "p01_researcher_specialty:v1": 2,
+      "p01_researcher_specialty:v2": 3,
+      "p01_researcher_specialty:v3": 3,
       "p02_author_employer:v1": 1,
       "p02_author_employer:v2": 3,
       "p02_author_employer:v3": 3,
@@ -437,16 +485,16 @@
       "p04_publication_funder_country:v1": 1,
       "p04_publication_funder_country:v3": 2
     },
-    "unique_compositions": 19,
-    "unique_query_instances": 53
+    "unique_compositions": 29,
+    "unique_query_instances": 71
   },
   "schema_version": 1,
   "seed": 1729,
   "validation": {
     "errors": [],
     "pass_percentage": 100.0,
-    "passed": 100,
-    "question_count": 100,
+    "passed": 135,
+    "question_count": 135,
     "reproducibility_checked": true,
     "reproducible": true,
     "valid": true
@@ -454,6 +502,6 @@
   "warnings": [
     "Stored relation frequencies differ by more than 10x; inspect the ontology and query coverage.",
     "Template-generated language is finite. Ordinary splits share grammar, facts, entities and compositions; they do not rule out memorization or template exploitation.",
-    "Relations used as distractors but not in the current question catalog: collaborates_with, contributes_to, partners_with, publication_field, specializes_in, subfield_of."
+    "Relations used as distractors but not in the current question catalog: collaborates_with, partners_with, publication_field, subfield_of."
   ]
 }

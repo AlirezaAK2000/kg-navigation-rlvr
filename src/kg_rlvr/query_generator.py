@@ -18,7 +18,8 @@ def generate_candidates(graph, config):
     settings = config["questions"]
     programs_by_type = defaultdict(list)
     for program in PROGRAMS:
-        programs_by_type[program.start_type].append(program)
+        if str(len(program.relation_path)) in settings["hop_weights"]:
+            programs_by_type[program.start_type].append(program)
     candidates, rejected = [], Counter()
     starts = sorted(graph.entities)
     random.Random(config["seed"] + 1).shuffle(starts)

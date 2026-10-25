@@ -209,7 +209,10 @@ def summarize_episodes(traces):
     correct = [t for t in traces if t["reward"] == 1.0]
     by_hop = {str(h): sum(t["reward"] for t in traces if t["hop_count"] == h) / sum(t["hop_count"] == h for t in traces)
               for h in sorted({t["hop_count"] for t in traces})}
-    return {"episodes": n, "accuracy": sum(t["reward"] for t in traces) / n if n else None,
+    total_reward = sum(t["reward"] for t in traces)
+    return {"episodes": n, "mean_reward": total_reward / n if n else None,
+            "total_reward": total_reward, "mean_reward_by_hop": by_hop,
+            "accuracy": total_reward / n if n else None,
             "submission_rate": sum(t["submitted"] for t in traces) / n if n else None,
             "valid_tool_call_rate": (calls - invalid) / calls if calls else 0.0,
             "episodes_with_valid_calls_rate": sum(t["tool_calls"] > t["invalid_tool_calls"] for t in traces) / n if n else None,
@@ -271,27 +274,40 @@ class GRPORollout:
                 "submitted_answers": [t["submitted_answer"] for t in traces]}
 
 
+def evaluation_reward_record(trace, index, label, training_step=None):
+    """One terminal reward per evaluated question; no intermediate tool rewards."""
+    return {"evaluation": label, "training_step": training_step, "evaluation_index": index,
+            "task_id": trace["task_id"], "hop_count": trace["hop_count"],
+            "reward": trace["reward"], "submitted_answer": trace["submitted_answer"],
+            "tool_calls": trace["tool_calls"], "termination_reason": trace["termination_reason"]}
+
+
 def evaluate_policy(model, tokenizer, store, task_ids, limits, output_dir, label,
-                    show_progress=True, progress_position=0):
+                    show_progress=True, progress_position=0, training_step=None):
     """Same real tools/limits for base, trained, and reloaded adapters; no gold guidance."""
     import torch
     codec = QwenChatCodec(tokenizer)
     sampler = transformer_sampler(model, tokenizer, sample=False)
     traces = []
+    directory = Path(output_dir)
+    directory.mkdir(parents=True, exist_ok=True)
     cuda_devices = [model.get_input_embeddings().weight.device.index] if model.get_input_embeddings().weight.is_cuda else []
-    with torch.random.fork_rng(devices=cuda_devices), generation_mode(model), progress_bar(
+    with (directory / f"{label}_rewards.jsonl").open("w") as reward_file, torch.random.fork_rng(devices=cuda_devices), generation_mode(model), progress_bar(
             len(task_ids), label.replace("_", " "), enabled=show_progress,
             position=progress_position) as progress:
         for task_id in task_ids:
             _, trace = run_episode(store, task_id, codec, sampler, limits,
                                   on_turn=progress.set_postfix if show_progress else None)
             traces.append(trace)
+            reward_file.write(json.dumps(evaluation_reward_record(trace, len(traces), label, training_step),
+                                         allow_nan=False) + "\n")
+            reward_file.flush()  # retain completed-question rewards if a later episode fails
             progress.set_postfix(completed=f"{len(traces)}/{len(task_ids)}",
+                reward=f"{trace['reward']:.0f}",
+                mean_reward=f"{sum(t['reward'] for t in traces) / len(traces):.3f}",
                 accuracy=f"{sum(t['reward'] for t in traces) / len(traces):.1%}",
                 submitted=f"{sum(t['submitted'] for t in traces)}/{len(traces)}", refresh=False)
             progress.update(1)
-    directory = Path(output_dir)
-    directory.mkdir(parents=True, exist_ok=True)
     # Label-specific evaluation files are replaced on rerun, never source datasets.
     (directory / f"{label}_trajectories.jsonl").write_text("".join(json.dumps(t) + "\n" for t in traces))
     summary = summarize_episodes(traces)

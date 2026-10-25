@@ -2,7 +2,7 @@
 
 A deterministic, CPU-only dataset-generation and inspection pipeline for studying
 multi-turn graph navigation. It produces a fictional academic ecosystem, typed
-2/3/4-hop set-valued questions, private verifier metadata, leakage-aware splits,
+1/2/3/4-hop set-valued questions, private verifier metadata, leakage-aware splits,
 statistics, and RDF/Turtle graph and ontology files for Protégé. An optional Kaggle
 notebook adds real multi-turn GRPO training with Qwen3 and NF4 QLoRA; its
 GPU-dependent validation status is documented below.
@@ -14,8 +14,8 @@ a GPU, external database, or network access once dependencies are installed.
 
 ## Included outputs
 
-- `data/`: full dataset, **2,000 train + 300 validation + 500 test**.
-- `pilot_data/`: **100 questions**, split 70/10/20, using the same full-sized graph.
+- `data/`: full dataset, **2,667 train + 400 validation + 667 test** (3,734 total).
+- `pilot_data/`: **135 questions**, split 94/14/27, using the same full-sized graph.
 - `data/graph/graph.ttl`: self-contained OWL ontology, labeled individuals and graph facts.
 - `data/metadata/samples.md`: ten seeded random questions with complete answers,
   reference paths, and fresh executable verification.
@@ -169,12 +169,12 @@ not a language-model baseline.
 
 ## Question construction and hop semantics
 
-`question_templates.py` contains 26 typed relation compositions, each with three
+`question_templates.py` contains 46 typed relation programs, each with three
 versioned, manually reviewed natural-language templates. The catalog includes
 forward and inverse traversal, citations, project leadership, employment,
 funding, and research fields. Set/existential wording avoids implying uniqueness
-when multiple answers exist. Some ontology relations currently serve only as
-distractors; the report lists them explicitly.
+when multiple answers exist. The one-hop catalog includes all 16 forward
+relations and four inverse operations; reports show the coverage actually sampled.
 
 Programs are executed first, yielding **complete answer sets**. Empty answers,
 oversized answer sets, low branching, over-budget gold executions, and oversized
@@ -232,8 +232,8 @@ degree density is controlled by entity/triple counts and extra-relation weights.
   "seed": 2027,
   "graph": {"entity_count": 3000, "triple_count": 8500},
   "questions": {
-    "split_counts": {"train": 2000, "validation": 300, "test": 500},
-    "hop_weights": {"2": 1, "3": 1, "4": 1},
+    "split_counts": {"train": 2667, "validation": 400, "test": 667},
+    "hop_weights": {"1": 1, "2": 1, "3": 1, "4": 1},
     "min_branching_factor": 3.0,
     "max_answer_set_size": 6,
     "max_tool_calls": 60,
@@ -242,7 +242,19 @@ degree density is controlled by entity/triple counts and extra-relation weights.
 }
 ```
 
-Hop quotas use largest-remainder allocation separately per split. By default,
+Hop quotas use largest-remainder allocation separately per split. The checked-in
+one-hop extension adds 934 questions (667 train, 100 validation, 167 test) while
+preserving every original 2–4-hop row, ID, split assignment and graph byte. Its
+20 reviewed one-hop programs cover all 16 forward relations and four inverse
+operations, with three language templates per program. New one-hop rows are
+appended after the original question IDs; independent RNG streams preserve the
+multi-hop sample when its quotas stay unchanged. The pilot similarly adds 35
+one-hop questions. Existing conversational prompt rows remain unchanged prefixes.
+
+`hop_weights` replaces the default hop mapping: use `{"1": 1}` for one-hop-only
+generation or `{"2": 1, "3": 1, "4": 1}` for the previous multi-hop selection.
+No graph or reward shaping changes are needed to generate one-hop tasks.
+ By default,
 up to two paraphrases share a query instance; a quota's final group may contain
 one. Instances are keyed by starting entity, complete relation program, and
 sorted complete answer set. A group belongs to exactly one split, and identical
@@ -258,7 +270,7 @@ question text is rejected even within a split.
   all their templates, from every ordinary split. This tests composition
   generalization, while entities and individual relations may overlap. Start
   IDs may overlap the optional holdout even under `start_entity`. See
-  `configs/composition_holdout.json`; it adds 150 questions beyond the base 2,800.
+  `configs/composition_holdout.json`; it adds 150 questions beyond the base 3,734.
 
 ```bash
 python3.11 scripts/generate_dataset.py --config configs/composition_holdout.json --output composition_data
@@ -442,8 +454,10 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
 5. Defaults evaluate 30 validation questions and attempt eight genuine GPU smoke
    steps. `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
    it explicitly for the initial 30 full-phase updates. Training defaults to
-   hops `[2, 3]`; `[4]` or any combination remains configurable. Evaluation
-   defaults to `[2, 3, 4]`.
+   hops `[1, 2, 3]`; any nonempty combination of `[1, 2, 3, 4]` is supported.
+   Evaluation defaults to `[1, 2, 3, 4]`. The smoke pool balances selected hop
+   categories. The tool-call budget is 12, allowing discovery at all four hops
+   plus submission; token and response limits can still terminate an episode.
    To follow a completed smoke-only Run All with full training, restart with a
    new `RUN_NAME` and enable full training before Run All; export/reload has
    already released the previous trainers and made that adapter inference-only.
@@ -477,6 +491,29 @@ dependency setup. The current notebook checks every pin in section 1 before
 importing the graph/ML backend, so missing TRL/bitsandbytes and version differences
 are reported there. For vanilla-baseline-only evaluation, use `RUN_BASELINE=True`,
 `RUN_SMOKE_TEST=False`, and `RUN_FULL_TRAINING=False`.
+
+During smoke and full training, `EVALUATE_EVERY_STEPS=1` evaluates the same
+`PERIODIC_EVAL_SIZE=6` fixed validation questions after each optimizer step.
+Increase the interval to reduce evaluation time, or set it to 0 to disable it.
+Evaluation progress shows each completed question's reward and the running mean;
+each evaluation prints mean/total reward and per-hop means. A separate table and
+curve show measured validation rewards by optimizer step. Per-question records
+include phase, step, question ID, hop, submitted ID and terminal reward. Rewards
+remain binary final-answer checks; intermediate tool calls have no added reward.
+Each phase saves `evaluation_metrics.jsonl` and `evaluation_rewards.jsonl`, with
+per-step files under `periodic_evaluation/`. Section 10 also exports consolidated
+copies under the run directory. Baseline, final evaluation and reload additionally
+save label-specific `_rewards.jsonl` files. Completed-question rewards are flushed
+to disk even if a later evaluation episode fails; a partial run has no new
+aggregate success claim. Validation rewards never contribute to GRPO updates.
+
+The notebook includes formatted trajectory inspection immediately after baseline
+evaluation, training, and post-training evaluation. Cards show the input messages,
+expandable full Qwen input with tool schemas, raw assistant text, parsed tool
+arguments, and actual tool responses in order. Training inspection reads saved
+rollouts; evaluation inspection uses existing traces. Neither invokes the model.
+Use `INSPECT_EXAMPLES` and `INSPECT_OFFSET` to browse consecutive episodes, with
+matching offsets for baseline/trained validation. Failures are not filtered out.
 
 `SHOW_PROGRESS=True` displays progress throughout model use. Downloads and weight
 loading use native Hugging Face bars; prompt checks and evaluations show completed

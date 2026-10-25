@@ -115,10 +115,10 @@ def markdown_report(report):
     lines += [f"| {t} | {n} |" for t, n in g["entity_counts_by_type"].items()]
     lines += ["", "## Stored triples", "", "| Relation | Count |", "|---|---:|"]
     lines += [f"| {r} | {n} |" for r, n in g["triple_counts_by_relation"].items()]
-    lines += ["", "## Questions", "", "| Split | 2 hops | 3 hops | 4 hops | Total |", "|---|---:|---:|---:|---:|"]
+    lines += ["", "## Questions", "", "| Split | 1 hop | 2 hops | 3 hops | 4 hops | Total |", "|---|---:|---:|---:|---:|---:|"]
     for split, hops in q["counts_by_split_and_hop"].items():
         get = lambda h: hops.get(h, hops.get(str(h), 0))
-        lines.append(f"| {split} | {get(2)} | {get(3)} | {get(4)} | {sum(hops.values())} |")
+        lines.append(f"| {split} | {get(1)} | {get(2)} | {get(3)} | {get(4)} | {sum(hops.values())} |")
     lines += ["", f"{q['unique_query_instances']} unique query instances; {q['unique_compositions']} relation compositions; {q['multi_answer_questions']} multi-answer questions.",
               f"Answer-set sizes: mean {q['answer_set_sizes']['mean']:.2f}, median {q['answer_set_sizes']['median']}, maximum {q['answer_set_sizes']['max']}.",
               f"Branching: mean {q['branching_factors']['mean']:.2f}, median {q['branching_factors']['median']:.2f}, maximum {q['branching_factors']['max']:.2f}.",

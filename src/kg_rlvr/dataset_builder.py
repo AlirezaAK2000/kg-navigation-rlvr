@@ -33,21 +33,25 @@ def read_questions(directory):
 
 def split_candidates(graph, candidates, config):
     rng = random.Random(config["seed"] + 2)
+    one_hop_rng = random.Random(config["seed"] + 3)
     settings = config["questions"]
     heldout = []
     if settings["composition_test_count"]:
-        for hop in (2, 3, 4):
+        for hop in (2, 3, 4, 1):
+            if str(hop) not in settings["hop_weights"]:
+                continue
             ids = [p.id for p in PROGRAMS if len(p.relation_path) == hop]
-            rng.shuffle(ids)
+            (one_hop_rng if hop == 1 else rng).shuffle(ids)
             heldout.extend(ids[:max(1, int(len(ids) * settings["holdout_program_fraction"]))])
     counts = dict(settings["split_counts"])
     if settings["composition_test_count"]:
         counts["composition_test"] = settings["composition_test_count"]
     pools = defaultdict(list)
     for candidate in candidates:
-        pools[candidate["hop_count"]].append(candidate)
-    for pool in pools.values():
-        rng.shuffle(pool)
+        if str(candidate["hop_count"]) in settings["hop_weights"]:
+            pools[candidate["hop_count"]].append(candidate)
+    for hop, pool in pools.items():
+        (one_hop_rng if hop == 1 else rng).shuffle(pool)
     used, questions, quotas = set(), [], {}
     base_counts = settings["split_counts"]
 
@@ -60,36 +64,41 @@ def split_candidates(graph, candidates, config):
             point -= count
         raise AssertionError("Unreachable allocation")
 
-    for split, count in counts.items():
-        quotas[split] = allocate(count, settings["hop_weights"])
-        for hop_label, quota in quotas[split].items():
-            hop = int(hop_label)
-            remaining = quota
-            available = 0
-            for candidate in pools[hop]:
-                if not remaining:
-                    break
-                iid = candidate["query_instance_id"]
-                is_holdout = candidate["program_id"] in heldout
-                if iid in used or is_holdout != (split == "composition_test"):
+    quotas = {split: allocate(count, settings["hop_weights"]) for split, count in counts.items()}
+    # Keep multi-hop RNG consumption and IDs stable when adding one-hop quotas.
+    # One-hop records are appended only after every original multi-hop split.
+    for one_hop in (False, True):
+        for split, count in counts.items():
+            for hop_label, quota in quotas[split].items():
+                hop = int(hop_label)
+                if (hop == 1) != one_hop:
                     continue
-                if settings["split_strategy"] == "start_entity" and split != "composition_test" and owner(candidate["start_entity"]) != split:
-                    continue
-                available += 1
-                used.add(iid)
-                program = PROGRAM_BY_ID[candidate["program_id"]]
-                variants = list(range(len(program.templates)))
-                rng.shuffle(variants)
-                take = min(settings["paraphrases_per_instance"], remaining)
-                for variant in variants[:take]:
-                    question = copy.deepcopy(candidate)
-                    question.update({"id": f"q_{len(questions) + 1:06d}", "split": split,
-                                     "template_id": f"{program.id}:v{variant + 1}",
-                                     "question": program.templates[variant].format(start=graph.entities[candidate["start_entity"]]["name"])})
-                    questions.append(question)
-                remaining -= take
-            if remaining:
-                raise GenerationError(f"Cannot fill {split} {hop}-hop quota: requested {quota}, produced {quota - remaining}; {available} eligible unused groups. No filters were relaxed. Adjust graph size, counts, or explicit filters.")
+                remaining = quota
+                available = 0
+                for candidate in pools[hop]:
+                    if not remaining:
+                        break
+                    iid = candidate["query_instance_id"]
+                    is_holdout = candidate["program_id"] in heldout
+                    if iid in used or is_holdout != (split == "composition_test"):
+                        continue
+                    if settings["split_strategy"] == "start_entity" and split != "composition_test" and owner(candidate["start_entity"]) != split:
+                        continue
+                    available += 1
+                    used.add(iid)
+                    program = PROGRAM_BY_ID[candidate["program_id"]]
+                    variants = list(range(len(program.templates)))
+                    (one_hop_rng if hop == 1 else rng).shuffle(variants)
+                    take = min(settings["paraphrases_per_instance"], remaining)
+                    for variant in variants[:take]:
+                        question = copy.deepcopy(candidate)
+                        question.update({"id": f"q_{len(questions) + 1:06d}", "split": split,
+                                         "template_id": f"{program.id}:v{variant + 1}",
+                                         "question": program.templates[variant].format(start=graph.entities[candidate["start_entity"]]["name"])})
+                        questions.append(question)
+                    remaining -= take
+                if remaining:
+                    raise GenerationError(f"Cannot fill {split} {hop}-hop quota: requested {quota}, produced {quota - remaining}; {available} eligible unused groups. No filters were relaxed. Adjust graph size, counts, or explicit filters.")
     return questions, {"quotas": quotas, "heldout_program_ids": sorted(heldout),
                        "eligible_candidates_by_hop": dict(sorted(Counter(c["hop_count"] for c in candidates).items()))}
 
