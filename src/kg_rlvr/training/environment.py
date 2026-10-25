@@ -1,4 +1,4 @@
-"""Real graph tools, private task lookup, strict Qwen tool parsing and binary RLVR.
+"""Real graph tools, private answer/retrieval verifiers and strict Qwen parsing.
 
 This module uses the existing RDFLib-backed graph/dataset utilities.
 Gold information never enters the prompt builder or graph environment.
@@ -15,6 +15,13 @@ import re
 from ..dataset_builder import read_questions
 from ..graph_index import GraphIndex, NavigationSession
 from ..validators import validate_dataset
+from ..question_templates import SINGLE_ANSWER_TEMPLATES
+
+
+RETRIEVAL_BONUS = 0.2
+REWARD_SPEC = {"version": "answer_plus_retrieval_v1", "answer_weight": 1.0,
+               "retrieval_bonus": RETRIEVAL_BONUS, "retrieval_source": "successful_get_neighbors",
+               "evaluation_reward": "binary_answer_membership"}
 
 
 @dataclass(frozen=True)
@@ -52,12 +59,13 @@ TOOL_SCHEMAS = [
 ]
 
 
-def public_prompt(graph, record, max_tool_calls=8):
+def public_prompt(graph, record, max_tool_calls=8, single_answer_only=False):
     """Explicit allowlist. Deliberately differs from the complete-set EDA prompt."""
     entity = graph.get_entity(record["start_entity"])
     instruction = (
         "Navigate the fictional research graph to answer the question. Submit ONE correct entity ID using submit_answer; "
-        "if several answers exist, any one is accepted. Use only discovered entities, beginning with the starting ID. "
+        + ("The question has one correct answer. " if single_answer_only else "If several answers exist, any one is accepted. ")
+        + "Use only discovered entities, beginning with the starting ID. "
         "Identify the entity type requested by the question. Follow every relationship needed to answer the whole question; "
         "a discovered neighbor may be an intermediate entity that requires further traversal. "
         "Before submitting, check that the selected entity's type and the traversed relationships satisfy the question. "
@@ -77,15 +85,41 @@ def prompt_key(prompt):
 
 class TaskStore:
     """Private verifier metadata. The model receives only allowlisted prompts."""
-    def __init__(self, graph, records, max_tool_calls=8):
+    def __init__(self, graph, records, max_tool_calls=8, single_answer_only=False):
         self.graph = graph
+        self.single_answer_only = single_answer_only
+        self.selection_statistics = []
+        for split in sorted({q["split"] for q in records if "split" in q}):
+            for hop in sorted({q["hop_count"] for q in records if q.get("split") == split}):
+                rows = [q for q in records if q.get("split") == split and q["hop_count"] == hop]
+                eligible = [q for q in rows if not single_answer_only or len(q["answer_ids"]) == 1]
+                keys = {(q["start_entity"], tuple(q["relation_path"]), tuple(sorted(q["answer_ids"]))) for q in eligible}
+                self.selection_statistics.append({"split": split, "hop_count": hop, "source_questions": len(rows),
+                    "eligible_questions": len(eligible), "removed_questions": len(rows) - len(eligible),
+                    "eligible_unique_instances": len(keys)})
+        if single_answer_only:
+            records = [copy.deepcopy(q) for q in records if len(q["answer_ids"]) == 1]
+            for q in records:
+                template = SINGLE_ANSWER_TEMPLATES[q["program_id"]]
+                q["question"] = template.format(start=graph.get_entity(q["start_entity"])["name"])
+                q["wording_template_id"] = q["program_id"] + ":single_v1"
         self._records = {q["id"]: copy.deepcopy(q) for q in records}
         if len(self._records) != len(records):
             raise ValueError("Duplicate task IDs")
-        self._prompts = {qid: public_prompt(graph, q, max_tool_calls) for qid, q in self._records.items()}
-        self._prompt_lookup = {prompt_key(prompt): qid for qid, prompt in self._prompts.items()}
-        if len(self._prompt_lookup) != len(records):
-            raise ValueError("Public prompts must uniquely identify tasks")
+        self._prompts = {qid: public_prompt(graph, q, max_tool_calls, single_answer_only) for qid, q in self._records.items()}
+        self._prompt_lookup = {}
+        for qid in sorted(self._prompts):
+            key = prompt_key(self._prompts[qid])
+            if key in self._prompt_lookup:
+                other = self._records[self._prompt_lookup[key]]
+                current = self._records[qid]
+                # Singular wording collapses source paraphrases. Resolve those
+                # aliases to the same first ID chosen by select(unique_instances=True).
+                fields = ("start_entity", "relation_path", "answer_ids", "split")
+                if not single_answer_only or any(current.get(f) != other.get(f) for f in fields):
+                    raise ValueError("Public prompts must uniquely identify tasks")
+            else:
+                self._prompt_lookup[key] = qid
 
     def prompt(self, task_id):
         return copy.deepcopy(self._prompts[task_id])
@@ -101,6 +135,32 @@ class TaskStore:
 
     def reward(self, task_id, submitted_answer):
         return float(submitted_answer in self._records[task_id]["answer_ids"])
+
+    def verify_episode(self, task_id, submitted_answer, tool_events):
+        """Private scoring from executed observations; never parse model claims.
+
+        Successful retrieval observations are independently checked against the
+        graph. Failed calls, relation lists and submission acknowledgments cannot
+        earn the once-per-episode bonus. No score is exposed through graph tools.
+        """
+        retrieved = set()
+        for event in tool_events:
+            observation = event["observation"]
+            if event["name"] != "get_neighbors" or observation.get("ok") is not True:
+                continue
+            arguments = event["arguments"]
+            head, relation = arguments["entity_id"], arguments["relation_id"]
+            ids = [entity["id"] for entity in observation["entities"]]
+            expected = self.graph.get_neighbors(head, relation)
+            if (observation.get("entity_id") != head or observation.get("relation_id") != relation
+                    or sorted(ids) != sorted(expected)):
+                raise ValueError("Retrieval verifier: observation does not match the executed graph query")
+            retrieved.update(ids)
+        correct = self.reward(task_id, submitted_answer)
+        hit = bool(retrieved.intersection(self._records[task_id]["answer_ids"]))
+        bonus = RETRIEVAL_BONUS * hit
+        return {"answer_correct": correct, "gold_entity_retrieved": hit,
+                "retrieval_reward": bonus, "training_reward": correct + bonus}
 
     def select(self, split, hops=(1, 2, 3), count=None, seed=41, unique_instances=True, balanced=False):
         if not hops or set(hops) - {1, 2, 3, 4}:
@@ -130,7 +190,7 @@ class TaskStore:
         return [q["id"] for q in rows]
 
 
-def load_tasks(data_root, max_tool_calls=8, validate=True):
+def load_tasks(data_root, max_tool_calls=8, validate=True, single_answer_only=False):
     root = Path(data_root)
     graph = GraphIndex.load(root / "graph")
     records = read_questions(root)
@@ -151,7 +211,7 @@ def load_tasks(data_root, max_tool_calls=8, validate=True):
     validation = validate_dataset(graph, records, config) if validate else None
     if validation is not None and not validation["valid"]:
         raise ValueError("Dataset validation failed: " + json.dumps(validation["errors"][:10]))
-    return graph, TaskStore(graph, records, max_tool_calls), validation
+    return graph, TaskStore(graph, records, max_tool_calls, single_answer_only), validation
 
 
 class GraphEnvironment:
@@ -282,10 +342,11 @@ def verify_group_prompts(prompts, num_generations):
 
 
 def make_reward(store):
-    def graph_answer_reward(completions, task_ids, submitted_answers, **kwargs):
+    def graph_answer_reward(completions, task_ids, submitted_answers, tool_events, **kwargs):
         # These values are supplied by the trusted rollout engine, never parsed
-        # from model prose. No shaping, length bonus, progress or efficiency term.
-        if len(completions) != len(task_ids) or len(task_ids) != len(submitted_answers):
+        # from model prose. Recompute both components from trusted engine data.
+        if not len(completions) == len(task_ids) == len(submitted_answers) == len(tool_events):
             raise ValueError("Reward/rollout length mismatch")
-        return [store.reward(task_id, answer) for task_id, answer in zip(task_ids, submitted_answers)]
+        return [store.verify_episode(task_id, answer, events)["training_reward"]
+                for task_id, answer, events in zip(task_ids, submitted_answers, tool_events)]
     return graph_answer_reward

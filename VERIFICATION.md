@@ -6,8 +6,8 @@ for inspection; actual Protégé frontend behavior was not tested in this sessio
 
 | Check | Result |
 |---|---|
-| Core test environment | 97 passed, 4 optional pinned-training API tests skipped |
-| Isolated pinned training/API environment | 98 passed, including all 4 real TRL/tokenizer/PEFT API tests; 1 optional notebook-setup module skipped (nbformat absent) |
+| Core test environment | 110 passed, 6 optional pinned-training API tests skipped |
+| Isolated pinned training/API environment | 113 passed, including all 6 real TRL/tokenizer/PEFT API tests; 1 optional notebook-setup module skipped (nbformat absent) |
 | RDF/SPARQL dependencies | RDFLib 7.6.0, pyparsing 3.2.3 |
 | RDF navigation | Forward/inverse queries agree with original graph facts; discovery and budget tests pass |
 | Turtle round trip | Entity IDs, names, types, relation schema and asserted edges preserved |
@@ -23,8 +23,10 @@ for inspection; actual Protégé frontend behavior was not tested in this sessio
 | QLoRA dtype regression | Real TRL constructor's quantized-model branch reproduced on a CPU metadata fixture; FP32 adapter values restored exactly; 3 CPU precision/GradScaler checks passed. Actual NF4/CUDA retry unverified |
 | One-hop extension | 934 full and 35 pilot one-hop questions appended; 8 regression checks cover complete answers, original-row preservation, grouped splits, optional split strategies and regeneration. Mixed training/smoke selection includes one-hop tasks |
 | Recorded model/tool inspection | 3 HTML renderer checks passed; escaping, turn order, tool errors, stored selection and no trace mutation. Real pinned Qwen tokenizer rendering checked. 3 new notebook cells execute on CPU with honest empty-trace output |
-| Public prompt budget | All 3,734 native Qwen prompts checked: 604–625 tokens against a 1,024-token limit |
-| Pretrained CUDA tool use, GRPO updates, VRAM and trained-adapter evaluation | Unverified; no CUDA GPU available |
+| Public prompt budget | All 3,432 active single-answer native Qwen prompts checked: 601–619 tokens against a 1,024-token limit |
+| Next iteration | 13 regression tests cover single-answer selection/wording/isolation, verified retrieval bonus, 20/40/40 schedules and manifests; real pinned TRL sampling and reward boundaries checked |
+| Episodic-return plotting | 1 regression check executes the measured-rollout plotting branch and verifies each panel title matches its plotted series |
+| Current-iteration pretrained CUDA tool use, GRPO updates, VRAM and trained-adapter evaluation | Unverified; no CUDA GPU available |
 
 Each saved graph contains 2,000 entities and 5,000 navigation facts. Its complete
 Turtle document contains 13,232 RDF triples including metadata and ontology
@@ -34,4 +36,4 @@ schema predicates. No reasoner or inferred-edge materialization runs in training
 See [the migration report](docs/rdf_migration_report.md), [the training report](docs/grpo_training_report.md)
 and [README](README.md) for details and execution instructions.
 
-Current machine-readable evidence: [one-hop extension and inspection validation](notebooks/reports/one_hop_extension_validation.json).
+Current machine-readable evidence: [training iteration validation](notebooks/reports/training_iteration_validation.json). Historical one-hop evidence remains in [one-hop extension and inspection validation](notebooks/reports/one_hop_extension_validation.json). The previous user-supplied GPU run is analyzed separately in [the seed-41 report](docs/seed41_results_analysis.md).

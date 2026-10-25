@@ -41,6 +41,9 @@ def render_episode_html(trace, *, label="Model", rendered_prompt=None):
               f'{_text(trace.get("task_id", "Episode"))}</h3><div>{_text(trace.get("question", ""))}</div>']
     metadata = {"Hops": trace.get("hop_count"), "Start": trace.get("start_entity"),
                 "Submitted": trace.get("submitted_answer"), "Reward": trace.get("reward"),
+                "Answer correct": trace.get("answer_correct"),
+                "Gold retrieved": trace.get("gold_entity_retrieved"),
+                "Retrieval bonus": trace.get("retrieval_reward"), "Training reward": trace.get("training_reward"),
                 "Tool calls": trace.get("tool_calls"), "End": trace.get("termination_reason")}
     blocks.append(''.join(f'<span class="kg-badge">{_text(key)}: {_text(value)}</span>'
                           for key, value in metadata.items() if value is not None))

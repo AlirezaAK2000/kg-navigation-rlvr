@@ -1,9 +1,10 @@
 # GRPO implementation and verification report
 
 The Kaggle notebook and supporting implementation are ready for a GPU smoke
-attempt. **They have not been executed on Kaggle. No genuine GRPO optimizer
+attempt. **The current iteration has not been executed on Kaggle. No genuine GRPO optimizer
 update, pretrained-model tool use, or T4 memory measurement was verified on the
-development host.** Local execution used an Apple Silicon CPU with no CUDA.
+development host. The previous user-supplied run is analyzed separately in
+[the seed-41 report](seed41_results_analysis.md); it is not validation of this iteration.** Local execution used an Apple Silicon CPU with no CUDA.
 The saved notebook outputs explicitly record these limits.
 
 ## Files
@@ -93,13 +94,26 @@ clipping at 1. The TRL objective is explicitly `loss_type="grpo"`, group-scaled
 rewards, `num_iterations=1`, and `beta=0`. No KL/reference-model copy is needed;
 KL is unavailable, not reported as a measured zero.
 
-Microbatch 1, accumulation 4, one GPU and G=4 give four trajectories for one
-question per optimizer update. Accumulation 8 gives two question groups. The
+Microbatch 1, accumulation 8, one GPU and G=8 give eight trajectories for one
+question per optimizer update. Accumulation 16 would give two question groups. The
 generation batch equals accumulation, which must be a positive multiple of G.
 Defaults are eight smoke update attempts and an opt-in 30-update full phase.
 Training hops default to `[1, 2, 3]`; any nonempty combination of `[1, 2, 3, 4]` is allowed.
-The smoke pool balances the selected training hop categories; full training samples
-from the selected mixed pool. One-hop questions use the same binary verifier.
+Set exposure weights alongside the selected training hops. Both smoke and full
+training use a deterministic weighted-deficit schedule, defaulting to 20%/40%/40%
+one/two/three-hop question groups. TRL shuffling is disabled for the scheduled
+dataset; TRL still supplies generation/buffering repetitions. Thirty full updates
+use 6/12/12 groups; eight smoke updates round to 2/3/3. Within each hop, questions
+are shuffled and cycled as necessary. The schedule has an extension-stable prefix
+for checkpoint resumption, and planned/actual hops are exported.
+
+`SINGLE_ANSWER_ONLY=True` filters complete gold sets before deduplication/caps and
+uses reviewed singular templates for all baseline/training/evaluation phases.
+Retained original IDs and split assignments are unchanged. Before deduplication,
+the full source provides 2,449 train, 364 validation and 619 test questions. Source
+files remain unchanged; active filtered records and selection counts are exported
+under each run. Equivalent source paraphrases resolve to the first original ID
+chosen by unique-instance selection. No gold answer ID or path enters prompts.
 Validation and test default to 30 separately selected questions each, balanced
 across the configured evaluation hops. Fixed IDs are saved before model loading.
 
@@ -137,15 +151,26 @@ Only question/start fields, public rules, schemas and real observations enter th
 policy context. Gold programs, answer sets and reference paths stay in the private
 task store. The verifier uses the environment's actual submitted entity ID:
 `float(submitted_answer in gold_answer_ids)`. Any one correct member earns 1;
-wrong or missing submissions earn 0. There are no intermediate, efficiency,
-invalid-action or path rewards. Acknowledgments do not expose correctness.
+wrong or missing submissions earn 0. This remains the evaluation reward/accuracy.
+Training adds a once-per-episode bonus of 0.2 when a successful executed
+`get_neighbors` observation contains a gold entity. The private verifier checks
+that successful observations match the actual graph query; failed calls, relation
+lists, prose, acknowledgments and repeated retrievals earn no additional bonus.
+The reward function recomputes both components from engine-supplied events, rather
+than accepting model claims or a supplied score. Acknowledgments and tool outputs
+do not expose scores or gold metadata. No format, efficiency or path rewards are
+added. Per-episode and summary logs separate binary correctness, retrieval success,
+retrieval bonus and combined training reward. Homogeneous-group metrics use the
+combined rewards actually supplied to GRPO, including groups homogeneous at 1.2.
+Run manifests fingerprint reward, single-answer selection and exposure settings
+so old incompatible checkpoints are rejected.
 
 ## Verification performed
 
 | Check | Result |
 |---|---|
-| Full local pytest suite | **69 passed, 3 skipped**; skips are optional pinned-stack tests in the ordinary environment |
-| Isolated pinned-stack full suite | **72 passed in the isolated pinned environment**, including the 3 API checks; real TRL config/sampler/mask boundary, real Qwen BPE template, tiny CPU PEFT adapter save/reload |
+| Full local pytest suite | **110 passed, 6 skipped**; skips are optional pinned-stack tests in the ordinary environment |
+| Isolated pinned-stack full suite | **113 passed, 1 skipped in the isolated pinned environment**, including all 6 API checks; real TRL config/weighted sampler/reward/mask boundaries, real Qwen BPE template, tiny CPU PEFT adapter save/reload. Notebook-setup module skipped because nbformat is absent |
 | Notebook execution | **18 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
 | Kaggle package setup regression suite | **3 passed**; reproduces missing TRL/bitsandbytes and version drift, verifies the section-1 gate and recovery instructions |
 | Model progress and evaluation reward checks | **8 passed** with scripted CPU fixtures; real tqdm counters, evaluation/trajectory totals, unchanged episode results/RNG, and partial progress on errors |
@@ -171,10 +196,9 @@ trajectories is fabricated for the saved CPU run.
 The notebook's GPU smoke gate requires actual finite trainer metrics, positive
 gradient norm, changed LoRA tensors, graph-neighbor execution and a checkpoint
 containing adapter, optimizer, scheduler, trainer and RNG state. A homogeneous
-binary-reward group has zero advantage; if all sampled groups are homogeneous,
+combined-training-reward group has zero advantage; if all sampled groups are homogeneous,
 the notebook fails the update gate and records the failure. The default now
-samples eight groups (32 episodes at G=4 and accumulation 4)
-instead of two. The shared prompt emphasizes completing all relationships and
+samples eight groups (64 episodes at G=8 and accumulation 8). The shared prompt emphasizes completing all relationships and
 checking the requested answer type, using only public question text and tool
 observations. Saved group rewards, metrics and failed trajectories are displayed
 on smoke failure and written to `smoke_diagnostics.json`, without requiring a live
@@ -292,9 +316,29 @@ inference cost; zero disables periodic evaluation. The callback saves one summar
 and one reward row per completed question, tagged with phase and optimizer step,
 and prints mean reward, total reward, evaluated count and per-hop means. Progress
 shows the latest question reward and running mean. Mean reward equals accuracy
-under the unchanged binary final-answer verifier; tool turns have no reward.
+under the binary final-answer verifier. Separate columns report retrieval success,
+retrieval bonus and combined training reward; these diagnostics do not change
+answer accuracy or contribute evaluation rewards to optimization.
 Evaluation preserves the training/evaluation mode and PyTorch RNG state and its
 rewards never enter the optimizer. The notebook displays a separate validation
 reward table/curve and exports consolidated JSONL in the run directory. Each
 baseline/final/reload evaluation also writes label-specific reward JSONL; streaming
 flushes preserve completed-question rewards if a later generation fails.
+
+## Next-iteration verification
+
+The single-answer/retrieval-reward/exposure iteration passed 110 host tests
+(6 optional API skips) and 113 tests in the pinned environment (1 optional
+notebook-setup module skip). All 18 notebook code cells executed on CPU with
+zero errors; GPU phases were explicitly skipped. All 3,432 retained question
+prompts fit the native Qwen tokenizer budget at 601–619 tokens (limit 1,024).
+The real TRL sampler preserves 6/12/12 question groups over 30 updates at G=8;
+its real reward-function boundary receives independently verified 1.2/0.2/0.0
+fixture scores. These are CPU correctness checks, not model-performance results.
+See `notebooks/reports/training_iteration_validation.json`.
+
+The retrieval-success signal is adapted from
+[KG-R1, Section 3.3](https://arxiv.org/html/2509.26383v5#S3.SS3).
+The 0.2 bonus is this project's experimental weight. The current implementation
+uses one scalar reward per episode; it does not implement KG-R1's turn-level
+advantage assignment. Correctness remains the primary evaluation metric.

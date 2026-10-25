@@ -43,6 +43,54 @@ def test_real_installed_trainer_and_configuration_api(tmp_path):
     assert len(set(islice(iter(sampler), 4))) == 1  # release actually repeats rows before rollout_func
 
 
+def test_real_trl_sampler_preserves_weighted_eight_generation_groups(tmp_path):
+    trl = pinned()
+    from types import SimpleNamespace
+    from collections import Counter
+    from kg_rlvr.training.environment import load_tasks, EpisodeLimits
+    from kg_rlvr.training.grpo import make_grpo_args
+    from kg_rlvr.training.sampling import exposure_schedule, DEFAULT_HOP_EXPOSURE
+    store = load_tasks("data", single_answer_only=True)[1]
+    pool = store.select("train", [1, 2, 3], count=100)
+    schedule = exposure_schedule(store, pool, 30, DEFAULT_HOP_EXPOSURE)
+    config = make_grpo_args(tmp_path, 30, EpisodeLimits(), generations=8, accumulation=8,
+                            cpu=True, shuffle_dataset=False)
+    assert config.generation_batch_size == config.steps_per_generation == config.num_generations == 8
+    probe = SimpleNamespace(args=config, train_dataset=schedule, num_generations=8,
+                            num_iterations=1, shuffle_dataset=config.shuffle_dataset)
+    indices = list(trl.GRPOTrainer._get_train_sampler(probe))
+    # TRL repeats the full generation batch across its 8 buffered microsteps.
+    per_update = 8 * config.steps_per_generation
+    assert len(indices) == 30 * per_update
+    groups = [indices[i:i + per_update] for i in range(0, len(indices), per_update)]
+    assert all(len(set(group)) == 1 for group in groups)
+    actual = [schedule[group[0]] for group in groups]
+    assert actual == schedule
+    assert Counter(store.record(qid)["hop_count"] for qid in actual) == {1: 6, 2: 12, 3: 12}
+
+
+def test_real_trl_reward_boundary_receives_private_execution_events(graph, tmp_path):
+    trl = pinned()
+    import torch
+    from types import SimpleNamespace
+    from kg_rlvr.training.environment import TaskStore, GraphEnvironment, make_reward
+    start = "researcher_000000"
+    university = graph.get_neighbors(start, "works_at")[0]
+    store = TaskStore(graph, [{"id": "fixture", "start_entity": start, "question": "Which employer?", "answer_ids": [university]}])
+    env = GraphEnvironment(graph, start)
+    env.get_neighbors(start, "works_at")
+    function = make_reward(store)
+    probe = SimpleNamespace(accelerator=SimpleNamespace(device=torch.device("cpu"), is_main_process=True),
+        args=SimpleNamespace(report_to=[]),
+        reward_funcs=[function], reward_processing_classes=[None], reward_func_names=[function.__name__],
+        environments=None, state=SimpleNamespace(global_step=1), _log_completion_extra=lambda *a, **kw: None,
+        _log_metric=lambda *a, **kw: None)
+    inputs = [{"prompt": store.prompt("fixture"), "task_ids": "fixture", "submitted_answers": answer,
+               "tool_events": events} for answer, events in [(university, env.trajectory), (None, env.trajectory), (None, [])]]
+    rewards = trl.GRPOTrainer._calculate_rewards(probe, inputs, [store.prompt("fixture")] * 3, ["claims"] * 3, [[1]] * 3)
+    assert rewards[:, 0].tolist() == pytest.approx([1.2, 0.2, 0.0])
+
+
 def test_real_qwen_chat_template_boundary_and_token_mask(graph, questions):
     pinned()
     directory = os.environ.get("KG_GRPO_TOKENIZER")
@@ -152,8 +200,13 @@ def test_real_trl_quantized_branch_precision_repair_preserves_adapter_values(gra
     monkeypatch.setattr(grpo, "make_grpo_args", lambda *a, **kw: make_args(*a, cpu=True, **kw))
     tokenizer = AutoTokenizer.from_pretrained(directory, local_files_only=True)
     store = TaskStore(graph, questions)
-    trainer, _ = grpo.build_trainer(model, tokenizer, store, [questions[0]["id"]],
-        EpisodeLimits(), tmp_path, "cpu_precision_fixture", 2, show_progress=False)
+    trainer, _ = grpo.build_trainer(model, tokenizer, store, store.select("train", [2, 3]),
+        EpisodeLimits(), tmp_path, "cpu_precision_fixture", 2, show_progress=False, hop_weights={2: 0.5, 3: 0.5})
+    assert trainer.shuffle_dataset is False
+    import json
+    plan = json.loads((tmp_path / "exposure_schedule.json").read_text())
+    assert [r["hop_count"] for r in plan] == [2, 3]
+    assert [store.resolve_prompt(row["prompt"]) for row in trainer.train_dataset] == [r["task_id"] for r in plan]
     assert trainer.optimizer is None
     assert trainer.lora_precision["restored_tensors"] == len(before) > 0
     assert trainer.lora_precision["preserved_lora_tensors"] == len(before)

@@ -11,7 +11,8 @@ import math
 from pathlib import Path
 import time
 
-from .environment import make_reward
+from .environment import make_reward, REWARD_SPEC
+from .sampling import exposure_schedule
 from .rollouts import GRPORollout, append_jsonl, evaluate_policy, evaluation_reward_record
 
 PINS = {"torch": "2.6.0", "transformers": "5.3.0", "trl": "1.8.0", "peft": "0.18.1",
@@ -165,7 +166,7 @@ def load_qlora(model_name, revision, lora_r=8, lora_alpha=16, show_progress=True
 
 
 def make_grpo_args(output_dir, steps, limits, generations=4, accumulation=4, learning_rate=5e-6,
-                   save_steps=10, seed=41, cpu=False, show_progress=True):
+                   save_steps=10, seed=41, cpu=False, show_progress=True, shuffle_dataset=True):
     from trl import GRPOConfig
     if steps < 1 or save_steps < 1:
         raise ValueError("Training and checkpoint intervals must be positive")
@@ -185,7 +186,7 @@ def make_grpo_args(output_dir, steps, limits, generations=4, accumulation=4, lea
         logging_steps=1, logging_nan_inf_filter=False, save_strategy="steps", save_steps=save_steps,
         save_total_limit=2, save_only_model=False,
         eval_strategy="no", report_to=[], seed=seed, data_seed=seed, dataloader_num_workers=0,
-        log_completions=False, disable_tqdm=not show_progress)
+        log_completions=False, disable_tqdm=not show_progress, shuffle_dataset=shuffle_dataset)
     unsupported = set(kwargs) - GRPOConfig.__dataclass_fields__.keys()
     if unsupported:
         raise RuntimeError(f"Unsupported pinned GRPOConfig arguments: {unsupported}")
@@ -223,10 +224,14 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
                                   **evaluation_reward_record(trace, index, label, state.global_step)})
                 append_jsonl(output_dir / "trainer_metrics.jsonl", {"step": state.global_step,
                     "eval_mean_reward": metrics["mean_reward"], "eval_total_reward": metrics["total_reward"],
+                    "eval_mean_training_reward": metrics["mean_training_reward"],
+                    "eval_retrieval_success_rate": metrics["retrieval_success_rate"],
                     "eval_episodes": metrics["episodes"]})
                 print(f"[{output_dir.name} evaluation | optimizer step {state.global_step}] "
                       f"mean_reward={metrics['mean_reward']:.4f}, total_reward={metrics['total_reward']:g}, "
-                      f"questions={metrics['episodes']}; mean_reward_by_hop={metrics['mean_reward_by_hop']}")
+                      f"questions={metrics['episodes']}; mean_reward_by_hop={metrics['mean_reward_by_hop']}; "
+                      f"retrieval_success={metrics['retrieval_success_rate']:.4f}, "
+                      f"mean_training_reward={metrics['mean_training_reward']:.4f}")
 
         def on_log(self, args, state, control, logs=None, **kwargs):
             logs = logs or {}
@@ -239,15 +244,25 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
 
 def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, steps,
                   generations=4, accumulation=4, learning_rate=5e-6, save_steps=10, seed=41,
-                  eval_task_ids=None, eval_every=0, show_progress=True):
+                  eval_task_ids=None, eval_every=0, show_progress=True, hop_weights=None):
     from datasets import Dataset
     from trl import GRPOTrainer
     if len(task_ids) < accumulation // generations:
         raise ValueError("Not enough unique training rows for one complete GRPO generation batch")
     assert_lora_fp32(model)
     args = make_grpo_args(output_dir, steps, limits, generations, accumulation, learning_rate, save_steps, seed,
-                          show_progress=show_progress)
-    dataset = Dataset.from_list([{"prompt": store.prompt(task_id)} for task_id in task_ids])
+                          show_progress=show_progress, shuffle_dataset=hop_weights is None)
+    scheduled_ids = (exposure_schedule(store, task_ids, steps * (accumulation // generations), hop_weights, seed)
+                     if hop_weights is not None else list(task_ids))
+    if hop_weights is not None:
+        # RepeatSampler retains this order and supplies G actual samples/group;
+        # repetitions needed for buffered gradient accumulation remain TRL's job.
+        plan = [{"group": i + 1, "optimizer_step": i // (accumulation // generations) + 1,
+                 "task_id": qid, "hop_count": store.record(qid)["hop_count"]}
+                for i, qid in enumerate(scheduled_ids)]
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        (Path(output_dir) / "exposure_schedule.json").write_text(json.dumps(plan, indent=2) + "\n")
+    dataset = Dataset.from_list([{"prompt": store.prompt(task_id)} for task_id in scheduled_ids])
     assert dataset.column_names == ["prompt"]
     rollout = GRPORollout(store, tokenizer, limits, output_dir, phase, show_progress=show_progress)
     callback = make_metrics_callback(output_dir, store, tokenizer, eval_task_ids, limits, eval_every,
@@ -298,7 +313,7 @@ def smoke_diagnostics(output_dir):
     traces = read_rows("trajectories.jsonl")
     groups = {}
     for trace in traces:
-        groups.setdefault(trace["group_id"], []).append(trace["reward"])
+        groups.setdefault(trace["group_id"], []).append(trace.get("training_reward", trace["reward"]))
     homogeneous = sum(len(set(rewards)) == 1 for rewards in groups.values())
     return {"episodes": len(traces), "groups": len(groups),
             "mixed_reward_groups": len(groups) - homogeneous,
@@ -326,7 +341,7 @@ def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1
     if trainer.state.global_step < required_steps or not losses or not all(math.isfinite(x) for x in losses):
         raise RuntimeError("No verified finite GRPO optimizer steps/losses were recorded")
     if not changed:
-        raise RuntimeError("No LoRA parameters changed. Inspect zero_reward_group_fraction and zero_variance_group_fraction: binary rewards with homogeneous groups produce zero advantages. Increase real smoke groups / tool budget or diagnose tool formatting; no successful update is claimed.")
+        raise RuntimeError("No LoRA parameters changed. Inspect zero_reward_group_fraction and zero_variance_group_fraction: homogeneous combined training rewards produce zero advantages. Increase real smoke groups / tool budget or diagnose tool formatting; no successful update is claimed.")
     if not any(row.get("grad_norm", 0) > 0 for row in trainer.state.log_history):
         raise RuntimeError("No positive finite gradient norm was logged")
     checkpoints = sorted(Path(output_dir).glob("checkpoint-*"), key=lambda p: int(p.name.rsplit("-", 1)[1]))
@@ -340,14 +355,19 @@ def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1
             **memory_snapshot("verified_smoke_update")}
 
 
-def training_manifest(model_name, revision, limits, task_ids, generations, accumulation, learning_rate, seed, r=8, alpha=16):
+def training_manifest(model_name, revision, limits, task_ids, generations, accumulation, learning_rate, seed, r=8, alpha=16,
+                      hop_weights=None, single_answer_only=False):
     package = Path(__file__).resolve().parents[1]
     return {"model_name": model_name, "revision": revision, "limits": asdict(limits),
             "task_ids": task_ids, "num_generations": generations, "gradient_accumulation_steps": accumulation,
             "learning_rate": learning_rate, "seed": seed, "lora_r": r, "lora_alpha": alpha,
             "lora_dropout": 0.0, "lora_targets": LORA_TARGETS, "beta": 0.0,
             "trainable_parameter_dtype": "torch.float32",
-            "loss_type": "grpo", "versions": dependency_versions(),
+            "loss_type": "grpo", "versions": dependency_versions(), "reward_spec": dict(REWARD_SPEC),
+            "single_answer_only": single_answer_only, "wording_version": "single_v1" if single_answer_only else "source",
+            "training_exposure": {"algorithm": "weighted_deficit_v1",
+                                  "hop_weights": {str(h): float(w) for h, w in hop_weights.items()}}
+                                 if hop_weights is not None else {"algorithm": "trl_shuffle"},
             "implementation_sha256": {str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest()
                                       for p in sorted(package.rglob("*.py"))}}
 

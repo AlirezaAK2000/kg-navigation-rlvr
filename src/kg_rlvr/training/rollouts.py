@@ -146,11 +146,12 @@ def run_episode(store, task_id, codec, sample_turn, limits, on_turn=None):
         env._finish("turn_limit")
     report(len(turns), env.termination_reason)
     reward = store.reward(task_id, env.submitted_answer)
+    verified = store.verify_episode(task_id, env.submitted_answer, env.trajectory)
     trace = {"task_id": task_id, "question": record["question"], "start_entity": record["start_entity"],
              "hop_count": record["hop_count"], "split": record["split"], "prompt": prompt,
              "turns": turns, "tool_events": copy.deepcopy(env.trajectory),
              "submitted_answer": env.submitted_answer, "gold_answer_ids": record["answer_ids"],
-             "reward": reward, "tool_calls": env.calls, "invalid_tool_calls": env.invalid_calls,
+             "reward": reward, **verified, "tool_calls": env.calls, "invalid_tool_calls": env.invalid_calls,
              "termination_reason": env.termination_reason, "submitted": env.submitted_answer is not None,
              "model_tokens": sum(ledger.env_mask), "environment_tokens": len(ledger.env_mask) - sum(ledger.env_mask),
              "elapsed_seconds": time.perf_counter() - started, "token_segments": ledger.segments}
@@ -210,8 +211,16 @@ def summarize_episodes(traces):
     by_hop = {str(h): sum(t["reward"] for t in traces if t["hop_count"] == h) / sum(t["hop_count"] == h for t in traces)
               for h in sorted({t["hop_count"] for t in traces})}
     total_reward = sum(t["reward"] for t in traces)
+    training_rewards = [t.get("training_reward", t["reward"]) for t in traces]
+    training_by_hop = {str(h): sum(t.get("training_reward", t["reward"]) for t in traces if t["hop_count"] == h)
+                      / sum(t["hop_count"] == h for t in traces)
+                      for h in sorted({t["hop_count"] for t in traces})}
     return {"episodes": n, "mean_reward": total_reward / n if n else None,
             "total_reward": total_reward, "mean_reward_by_hop": by_hop,
+            "mean_training_reward": sum(training_rewards) / n if n else None,
+            "total_training_reward": sum(training_rewards), "mean_training_reward_by_hop": training_by_hop,
+            "retrieval_success_rate": sum(t.get("gold_entity_retrieved", False) for t in traces) / n if n else None,
+            "mean_retrieval_reward": sum(t.get("retrieval_reward", 0.0) for t in traces) / n if n else None,
             "accuracy": total_reward / n if n else None,
             "submission_rate": sum(t["submitted"] for t in traces) / n if n else None,
             "valid_tool_call_rate": (calls - invalid) / calls if calls else 0.0,
@@ -251,7 +260,7 @@ class GRPORollout:
                 ledgers.append(ledger)
                 traces.append(trace)
                 progress.set_postfix(completed=f"{len(traces)}/{len(prompts)}",
-                    reward=f"{sum(t['reward'] for t in traces) / len(traces):.3f}", refresh=False)
+                    training_reward=f"{sum(t['training_reward'] for t in traces) / len(traces):.3f}", refresh=False)
                 progress.update(1)
         self.batch_count += 1
         for group_number, offset in enumerate(range(0, len(traces), group_size)):
@@ -260,25 +269,33 @@ class GRPORollout:
             group_id = f"{self.phase}:{step}:{self.batch_count}:{group_number}"
             for trace in group:
                 append_jsonl(self.output_dir / "trajectories.jsonl", {"phase": self.phase, "step": step, "group_id": group_id, **trace})
-        grouped_rewards = [sum(t["reward"] for t in traces[i:i + group_size]) for i in range(0, len(traces), group_size)]
+        grouped_rewards = [[t["training_reward"] for t in traces[i:i + group_size]]
+                           for i in range(0, len(traces), group_size)]
+        grouped_answers = [[t["answer_correct"] for t in traces[i:i + group_size]]
+                           for i in range(0, len(traces), group_size)]
         metrics = summarize_episodes(traces)
         append_jsonl(self.output_dir / "rollout_metrics.jsonl", {"phase": self.phase, "step": step,
-            "mean_episode_reward": metrics["accuracy"], "success_fraction": metrics["accuracy"],
-            "zero_reward_group_fraction": sum(r == 0 for r in grouped_rewards) / len(grouped_rewards),
-            "zero_variance_group_fraction": sum(r in (0, group_size) for r in grouped_rewards) / len(grouped_rewards),
+            "mean_episode_reward": metrics["mean_training_reward"], "success_fraction": metrics["accuracy"],
+            "zero_reward_group_fraction": sum(all(r == 0 for r in group) for group in grouped_rewards) / len(grouped_rewards),
+            "zero_variance_group_fraction": sum(len(set(group)) == 1 for group in grouped_rewards) / len(grouped_rewards),
+            "answer_zero_variance_group_fraction": sum(len(set(group)) == 1 for group in grouped_answers) / len(grouped_answers),
             **metrics})
         self.last_traces = traces
         return {"prompt_ids": [l.prompt_ids for l in ledgers], "completion_ids": [l.completion_ids for l in ledgers],
                 "env_mask": [l.env_mask for l in ledgers], "logprobs": None,
                 "task_ids": [t["task_id"] for t in traces],
-                "submitted_answers": [t["submitted_answer"] for t in traces]}
+                "submitted_answers": [t["submitted_answer"] for t in traces],
+                "tool_events": [t["tool_events"] for t in traces]}
 
 
 def evaluation_reward_record(trace, index, label, training_step=None):
     """One terminal reward per evaluated question; no intermediate tool rewards."""
     return {"evaluation": label, "training_step": training_step, "evaluation_index": index,
             "task_id": trace["task_id"], "hop_count": trace["hop_count"],
-            "reward": trace["reward"], "submitted_answer": trace["submitted_answer"],
+            "reward": trace["reward"], "answer_correct": trace["answer_correct"],
+            "gold_entity_retrieved": trace["gold_entity_retrieved"],
+            "retrieval_reward": trace["retrieval_reward"], "training_reward": trace["training_reward"],
+            "submitted_answer": trace["submitted_answer"],
             "tool_calls": trace["tool_calls"], "termination_reason": trace["termination_reason"]}
 
 

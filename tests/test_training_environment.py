@@ -78,7 +78,8 @@ def test_binary_rewards_use_actual_single_submissions(graph, questions):
     assert store.reward(q["id"], None) == 0.0
     assert store.reward(q["id"], q["start_entity"]) == 0.0
     function = make_reward(store)
-    assert function(["claimed correct", "claimed wrong"], [q["id"], q["id"]], [None, q["answer_ids"][0]]) == [0.0, 1.0]
+    assert function(["claimed correct", "claimed wrong"], [q["id"], q["id"]],
+                    [None, q["answer_ids"][0]], [[], []]) == [0.0, 1.0]
 
 
 def test_intermediate_submission_is_accepted_but_not_rewarded(graph):

@@ -93,6 +93,11 @@ def test_grpo_progress_counts_trajectories_in_the_actual_group(progress_fixture,
     assert bar.desc == "fixture step 3: sampling"
     assert len(output["completion_ids"]) == 4 and len(output["env_mask"]) == 4
     assert output["task_ids"] == [q["id"]] * 4
+    metrics = json.loads((tmp_path / "rollout_metrics.jsonl").read_text().splitlines()[-1])
+    assert metrics["mean_episode_reward"] == metrics["mean_training_reward"] == 1.2
+    assert metrics["accuracy"] == 1.0 and metrics["retrieval_success_rate"] == 1.0
+    assert metrics["zero_variance_group_fraction"] == 1.0  # homogeneous at 1.2, not binary 1
+    assert len(output["tool_events"]) == 4
     assert model.training
 
 
@@ -128,6 +133,8 @@ def test_evaluation_records_actual_terminal_rewards_and_training_step(progress_f
     assert summary["mean_reward"] == summary["accuracy"] == expected
     assert summary["total_reward"] == 2 * expected
     assert summary["mean_reward_by_hop"] == {str(q["hop_count"]): expected}
+    assert all(r["answer_correct"] == expected and r["gold_entity_retrieved"] for r in rows)
+    assert all(r["retrieval_reward"] == 0.2 and r["training_reward"] == expected + 0.2 for r in rows)
     assert f"reward={int(expected)}" in bars[-1][1].getvalue()
     assert f"mean_reward={expected:.3f}" in bars[-1][1].getvalue()
 

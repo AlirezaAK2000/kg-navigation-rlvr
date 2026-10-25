@@ -414,11 +414,11 @@ executor, not measured model exploration.
 
 [`notebooks/02_grpo_training_kaggle.ipynb`](notebooks/02_grpo_training_kaggle.ipynb)
 implements genuine TRL GRPO with real graph interaction, isolated episodes,
-single-entity binary rewards, baseline/post-training tool-use evaluation,
+single-answer questions, correctness-plus-retrieval training rewards, baseline/post-training tool-use evaluation,
 checkpointing, and adapter export/reload. Training uses Qwen/Qwen3-1.7B, NF4
 double quantization, LoRA rank 8 / alpha 16 / dropout 0, non-reentrant gradient
-checkpointing, microbatch 1 and four generations per question. T4 computation
-uses FP16; emulated BF16 is explicitly excluded. No SFT, reward shaping, vLLM,
+checkpointing, microbatch 1 and eight generations per question. T4 computation
+uses FP16; emulated BF16 is explicitly excluded. No SFT, vLLM,
 or LLM judge is implemented.
 
 **Validation status:** non-GPU notebook cells, CPU graph/environment tests, and
@@ -455,8 +455,18 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    steps. `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
    it explicitly for the initial 30 full-phase updates. Training defaults to
    hops `[1, 2, 3]`; any nonempty combination of `[1, 2, 3, 4]` is supported.
-   Evaluation defaults to `[1, 2, 3, 4]`. The smoke pool balances selected hop
-   categories. The tool-call budget is 12, allowing discovery at all four hops
+   Evaluation defaults to `[1, 2, 3, 4]`. `SINGLE_ANSWER_ONLY=True` removes questions
+   with multiple final answers from every model phase before deduplication/caps,
+   and uses reviewed singular wording. Original source data and split assignments
+   are preserved; active records are exported under the run's `selected_dataset/rl/`.
+   Eligible counts are 2,449 train, 364 validation and 619 test before deduplication.
+   Actual smoke/full training exposure uses `TRAIN_HOP_EXPOSURE={1:0.2,2:0.4,3:0.4}`.
+   The ordered schedule gives one/two/two question groups per five updates;
+   the default 30-step full run has 6/12/12 groups and eight samples per group.
+   Partial blocks are rounded by interleaving (eight smoke groups: 2/3/3).
+   Questions within each hop are shuffled, cycling if needed. Update exposure
+   weights alongside `TRAIN_HOPS` when changing categories. The tool-call budget
+   is 12, allowing discovery at all four hops
    plus submission; token and response limits can still terminate an episode.
    To follow a completed smoke-only Run All with full training, restart with a
    new `RUN_NAME` and enable full training before Run All; export/reload has
@@ -465,9 +475,9 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    or disable both smoke and full training before Run All. The baseline runs
    with the LoRA adapter disabled; it is saved before any optimizer update.
 6. Inspect actual rewards, malformed calls, submissions, truncations, homogeneous
-   groups and LoRA deltas. Sparse binary rewards can produce no learning signal;
-   an all-zero/all-one smoke run is diagnosed rather than reported as success.
-   The default smoke samples 32 episodes across eight groups. On failure it
+   groups and LoRA deltas. Homogeneous combined rewards can produce no learning
+   signal; such a smoke run is diagnosed rather than reported as success.
+   The default smoke samples 64 episodes across eight groups. On failure it
    displays group rewards, trainer metrics and failed trajectories, and saves
    `smoke_diagnostics.json` under the run directory. The shared prompt emphasizes
    completing the relationships in the question and checking the answer type.
@@ -499,7 +509,9 @@ Evaluation progress shows each completed question's reward and the running mean;
 each evaluation prints mean/total reward and per-hop means. A separate table and
 curve show measured validation rewards by optimizer step. Per-question records
 include phase, step, question ID, hop, submitted ID and terminal reward. Rewards
-remain binary final-answer checks; intermediate tool calls have no added reward.
+remain binary final-answer checks. Separate fields report `gold_entity_retrieved`,
+`retrieval_reward` and combined `training_reward`, with aggregate retrieval-success
+rate and mean training reward. These diagnostics do not change evaluation accuracy.
 Each phase saves `evaluation_metrics.jsonl` and `evaluation_rewards.jsonl`, with
 per-step files under `periodic_evaluation/`. Section 10 also exports consolidated
 copies under the run directory. Baseline, final evaluation and reload additionally
@@ -543,16 +555,27 @@ our episode's submission state before generating again. The custom adapter stops
 at submission/budget limits and passes `env_mask` into TRL. Model token IDs are
 preserved, observation/prefill tokens are masked from the policy objective, and
 all GRPO loss/advantage/optimizer code remains in TRL. The release's RepeatSampler
-already repeats each prompt four times; assertions prevent repeating it twice or
-mixing questions in a comparison group. A single GPU, accumulation 4, microbatch
-1 and G=4 means one question/group and four trajectories per optimizer update.
+already repeats each prompt G times; assertions prevent repeating it twice or
+mixing questions in a comparison group. A single GPU, accumulation 8, microbatch
+1 and G=8 means one question/group and eight trajectories per optimizer update.
+An ordered weighted-deficit schedule controls actual training exposure instead
+of relying on pool proportions. TRL shuffling is disabled for this pre-shuffled
+schedule, whose prefix is preserved when extending a resumed run. Planned group
+IDs/hops and actual trajectory hops are saved separately for audit.
 
 Only question/start information, tool schemas, public rules and real observations
-reach the model. The binary verifier reads the environment's actual submitted
-ID, independently of generated claims of correctness. Returning any one member
-of the complete gold set earns 1; wrong/no submissions earn 0. This is distinct
-from the earlier complete-set conversational export. Paths and tools logs are
-private diagnostics, never policy prompt fields.
+reach the model. Binary answer correctness is computed from the environment's
+actual submitted ID and remains the evaluation reward/accuracy. The optimizer
+receives `answer_correct + 0.2 * gold_entity_retrieved`. Retrieval earns its bonus
+once per episode if a successful executed `get_neighbors` response contains a
+gold ID, independently rechecked against the graph. Relation lists, failed calls,
+model prose, submission acknowledgments and repeated retrievals earn no extra
+bonus. Correctness, retrieval bonus and combined reward are logged separately;
+zero-variance group metrics use the actual combined rewards. Gold metadata and
+scores never appear in tool observations. The active experiment contains only
+one-answer questions; the earlier complete-set source/conversational data remains
+available for reproducibility. Run manifests fingerprint the reward, selection
+and exposure policy so incompatible old checkpoints cannot be resumed silently.
 
 Outputs on Kaggle:
 
