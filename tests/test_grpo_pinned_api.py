@@ -201,10 +201,14 @@ def test_real_trl_quantized_branch_precision_repair_preserves_adapter_values(gra
     tokenizer = AutoTokenizer.from_pretrained(directory, local_files_only=True)
     store = TaskStore(graph, questions)
     trainer, _ = grpo.build_trainer(model, tokenizer, store, store.select("train", [2, 3]),
-        EpisodeLimits(), tmp_path, "cpu_precision_fixture", 2, show_progress=False, hop_weights={2: 0.5, 3: 0.5})
+        EpisodeLimits(), tmp_path / "checkpoints", "cpu_precision_fixture", 2, show_progress=False,
+        hop_weights={2: 0.5, 3: 0.5}, diagnostics_dir=tmp_path / "diagnostics")
     assert trainer.shuffle_dataset is False
     import json
-    plan = json.loads((tmp_path / "exposure_schedule.json").read_text())
+    plan = json.loads((tmp_path / "diagnostics/exposure_schedule.json").read_text())
+    assert trainer.args.output_dir == str(tmp_path / "checkpoints")
+    assert (tmp_path / "diagnostics/precision_checks.jsonl").exists()
+    assert not (tmp_path / "checkpoints/precision_checks.jsonl").exists()
     assert [r["hop_count"] for r in plan] == [2, 3]
     assert [store.resolve_prompt(row["prompt"]) for row in trainer.train_dataset] == [r["task_id"] for r in plan]
     assert trainer.optimizer is None

@@ -21,13 +21,14 @@
 - Check IDs, semantic-instance signatures and public prompts for overlap across SFT, GRPO and test; both GRPO phases use the remaining pool.
 - Execute reference tool calls through the real graph environment and supervise only assistant action/EOS tokens using the native runtime codec and limits.
 - Evaluate vanilla and SFT-only models before GRPO; export SFT losses, a verified adapter and checkpoint evidence separately.
-- Require verified SFT before GRPO; compare vanilla, SFT and SFT + GRPO on identical test IDs. Graph entities and facts remain shared.
+- Require verified SFT before SFT + GRPO; independently initialize GRPO only and compare all four variants on identical test IDs. Graph entities and facts remain shared.
 
-## Implemented: train/test and three-stage comparison
+## Implemented: train/test and four-variant comparison
 
 - Merge validation into test while preserving all question IDs, contents and train rows; retain migration provenance and regeneration checks.
-- Select test IDs once for vanilla, SFT and SFT + GRPO; retain separate SFT and GRPO training instances.
-- Remove the GRPO-only switch and duplicate validation/final-test evaluation paths.
+- Select test IDs once for vanilla, SFT, SFT + GRPO and GRPO only; retain separate SFT and GRPO training instances.
+- Retain train/test only; run independent GRPO only with the same GRPO pool and budgets as SFT + GRPO.
+- Save each variant’s performance, raw and formatted trajectories, and RL returns/diagnostics before proceeding. The final cell only ZIPs the already saved files.
 
 ## Pending: restrict redundant relation discovery per episode
 
@@ -49,5 +50,12 @@
 - Apply the same constraint mode to baseline, training, test, and adapter-reload evaluation.
 - Test argument legality, episode isolation, probability calculations, and genuine optimizer updates before relying on GPU training results.
 - Use the current notebook's recorded failures to prioritize this work; establish benefits with controlled constrained/unconstrained comparisons rather than assuming it fixes zero rewards.
+
+## Pending: evaluate compact ontology context
+
+- Test a public schema summary containing the eight entity types, sixteen forward relations, source/destination types, brief relation meanings and an explanation of inverse traversal.
+- Keep entity instances, graph facts and question-specific gold answers or paths outside the schema summary; retain `get_relations` for entity-specific discovery.
+- Apply the same schema context to vanilla evaluation, SFT demonstrations, SFT + GRPO and GRPO only; recheck prompt and episode token budgets.
+- Compare against the current context on identical test IDs, tracking answer accuracy, wrong-type submissions, relation-direction errors and token use. Keep this optional until measured results support it.
 
 The remaining sections marked Pending are future changes; they are not part of this iteration.

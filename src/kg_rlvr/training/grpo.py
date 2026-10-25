@@ -244,7 +244,8 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
 
 def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, steps,
                   generations=4, accumulation=4, learning_rate=5e-6, save_steps=10, seed=41,
-                  eval_task_ids=None, eval_every=0, show_progress=True, hop_weights=None, excluded_sft_task_ids=None):
+                  eval_task_ids=None, eval_every=0, show_progress=True, hop_weights=None, excluded_sft_task_ids=None,
+                  diagnostics_dir=None):
     from datasets import Dataset
     from trl import GRPOTrainer
     if excluded_sft_task_ids:
@@ -252,6 +253,7 @@ def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, 
     if len(task_ids) < accumulation // generations:
         raise ValueError("Not enough unique training rows for one complete GRPO generation batch")
     assert_lora_fp32(model)
+    diagnostics_dir = Path(diagnostics_dir or output_dir)
     args = make_grpo_args(output_dir, steps, limits, generations, accumulation, learning_rate, save_steps, seed,
                           show_progress=show_progress, shuffle_dataset=hop_weights is None)
     scheduled_ids = (exposure_schedule(store, task_ids, steps * (accumulation // generations), hop_weights, seed)
@@ -262,12 +264,12 @@ def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, 
         plan = [{"group": i + 1, "optimizer_step": i // (accumulation // generations) + 1,
                  "task_id": qid, "hop_count": store.record(qid)["hop_count"]}
                 for i, qid in enumerate(scheduled_ids)]
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
-        (Path(output_dir) / "exposure_schedule.json").write_text(json.dumps(plan, indent=2) + "\n")
+        diagnostics_dir.mkdir(parents=True, exist_ok=True)
+        (diagnostics_dir / "exposure_schedule.json").write_text(json.dumps(plan, indent=2) + "\n")
     dataset = Dataset.from_list([{"prompt": store.prompt(task_id)} for task_id in scheduled_ids])
     assert dataset.column_names == ["prompt"]
-    rollout = GRPORollout(store, tokenizer, limits, output_dir, phase, show_progress=show_progress)
-    callback = make_metrics_callback(output_dir, store, tokenizer, eval_task_ids, limits, eval_every,
+    rollout = GRPORollout(store, tokenizer, limits, diagnostics_dir, phase, show_progress=show_progress)
+    callback = make_metrics_callback(diagnostics_dir, store, tokenizer, eval_task_ids, limits, eval_every,
                                      show_progress=show_progress)
     # No `tools` / `environment_factory`: those would trigger TRL's independent
     # tool loop and could execute our already-executed actions a second time.
@@ -290,7 +292,7 @@ def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, 
         for name, p in after.items():
             p.copy_(adapter_before_init[name])
     trainer.lora_precision["preserved_lora_tensors"] = len(adapter_before_init)
-    append_jsonl(Path(output_dir) / "precision_checks.jsonl", {"stage": "after_trainer_init",
+    append_jsonl(diagnostics_dir / "precision_checks.jsonl", {"stage": "after_trainer_init",
         "fp16": args.fp16, "bf16": args.bf16,
         "scaler": type(trainer.accelerator.scaler).__name__ if trainer.accelerator.scaler is not None else None,
         **trainer.lora_precision})
@@ -410,7 +412,7 @@ def export_adapter(model, tokenizer, directory, manifest, extra=None):
     return directory
 
 
-def reload_adapter_in_place(model, directory):
+def reload_adapter_in_place(model, directory, *, is_trainable=False):
     """Use the same quantized base; do not allocate another 1.7B model copy."""
     from peft import PeftModel
     base = model.unload()
@@ -419,4 +421,19 @@ def reload_adapter_in_place(model, directory):
     if hasattr(base, "peft_config"):
         delattr(base, "peft_config")  # residual metadata after PEFT 0.18.1 unload
     gc.collect()
-    return PeftModel.from_pretrained(base, directory, is_trainable=False)
+    reloaded = PeftModel.from_pretrained(base, directory, is_trainable=is_trainable)
+    if is_trainable:
+        restore_lora_fp32(reloaded)
+    return reloaded
+
+
+def lora_fingerprint(model):
+    """Fingerprint adapter values independently of their requires_grad flags."""
+    digest = hashlib.sha256()
+    for name, parameter in sorted(model.named_parameters()):
+        if "lora_" in name:
+            value = parameter.detach().cpu().contiguous()
+            digest.update(name.encode())
+            digest.update(str((value.dtype, tuple(value.shape))).encode())
+            digest.update(value.numpy().tobytes())
+    return digest.hexdigest()

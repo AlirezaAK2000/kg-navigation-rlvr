@@ -309,13 +309,15 @@ def evaluate_policy(model, tokenizer, store, task_ids, limits, output_dir, label
     directory = Path(output_dir)
     directory.mkdir(parents=True, exist_ok=True)
     cuda_devices = [model.get_input_embeddings().weight.device.index] if model.get_input_embeddings().weight.is_cuda else []
-    with (directory / f"{label}_rewards.jsonl").open("w") as reward_file, torch.random.fork_rng(devices=cuda_devices), generation_mode(model), progress_bar(
+    with (directory / f"{label}_rewards.jsonl").open("w") as reward_file, (directory / f"{label}_trajectories.jsonl").open("w") as trace_file, torch.random.fork_rng(devices=cuda_devices), generation_mode(model), progress_bar(
             len(task_ids), label.replace("_", " "), enabled=show_progress,
             position=progress_position) as progress:
         for task_id in task_ids:
             _, trace = run_episode(store, task_id, codec, sampler, limits,
                                   on_turn=progress.set_postfix if show_progress else None)
             traces.append(trace)
+            trace_file.write(json.dumps(trace, allow_nan=False) + "\n")
+            trace_file.flush()
             reward_file.write(json.dumps(evaluation_reward_record(trace, len(traces), label, training_step),
                                          allow_nan=False) + "\n")
             reward_file.flush()  # retain completed-question rewards if a later episode fails
@@ -326,7 +328,6 @@ def evaluate_policy(model, tokenizer, store, task_ids, limits, output_dir, label
                 submitted=f"{sum(t['submitted'] for t in traces)}/{len(traces)}", refresh=False)
             progress.update(1)
     # Label-specific evaluation files are replaced on rerun, never source datasets.
-    (directory / f"{label}_trajectories.jsonl").write_text("".join(json.dumps(t) + "\n" for t in traces))
     summary = summarize_episodes(traces)
     (directory / f"{label}_metrics.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
     return summary, traces

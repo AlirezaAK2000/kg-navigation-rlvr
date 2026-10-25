@@ -201,5 +201,6 @@ def test_notebook_orders_baseline_sft_evaluation_and_disjoint_grpo():
     assert "partition_training_tasks(" in cells["grpo-007"]
     assert "sft_ids + train_ids" in cells["grpo-011"]
     for cell in ("grpo-017", "grpo-019"):
-        assert "excluded_sft_task_ids=sft_ids" in cells[cell]
+        assert "**RL_KWARGS" in cells[cell]
+        assert '"excluded_sft_task_ids": sft_ids' in cells["grpo-015"]
         assert "if SFT_RESULT is None:" in cells[cell]

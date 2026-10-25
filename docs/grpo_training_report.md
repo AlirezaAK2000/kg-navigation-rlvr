@@ -115,7 +115,7 @@ the full source provides 2,449 train and 983 test questions. Source
 files remain unchanged; active filtered records and selection counts are exported
 under each run. Equivalent source paraphrases resolve to the first original ID
 chosen by unique-instance selection. No gold answer ID or path enters prompts.
-All three stages use the same 30 fixed test questions, balanced across the
+All four variants use the same 30 fixed test questions, balanced across the
 configured evaluation hops. `TEST_EVAL_SIZE=None` uses every eligible unique
 test instance. Fixed IDs are saved before model loading; no validation split remains.
 
@@ -203,7 +203,7 @@ the notebook fails the update gate and records the failure. The default now
 samples eight groups (64 episodes at G=8 and accumulation 8). The shared prompt emphasizes completing all relationships and
 checking the requested answer type, using only public question text and tool
 observations. Saved group rewards, metrics and failed trajectories are displayed
-on smoke failure and written to `smoke_diagnostics.json`, without requiring a live
+in per-variant smoke logs and standalone HTML, without requiring a live
 trainer. More samples cannot guarantee reward variation. Recompute the vanilla
 baseline with the same revised prompt; full training does not follow a failed gate.
 
@@ -271,7 +271,7 @@ its changing base environment and package installation in the
    and the large base-model cache.
 
 Outputs are `/kaggle/working/checkpoints/<RUN_NAME>/{smoke,full}/`,
-`/kaggle/working/runs/<RUN_NAME>/`, `/kaggle/working/grpo_adapter/`, and
+`/kaggle/working/runs/<RUN_NAME>/`, `RUN_ROOT/variants/<variant>/adapter/`, and
 `/kaggle/working/<RUN_NAME>_adapter_and_diagnostics.zip`.
 For resume in a new session, attach the original complete full-phase checkpoint
 and its parent `run_manifest.json`, use a fresh output `RUN_NAME`, enable full
@@ -374,8 +374,8 @@ adapter fingerprints and partition metadata enter the GRPO warm-start manifest;
 resume requires the matching supervised initialization. SFT-only losses, adapter,
 evaluation and formatted tool traces are separate from final GRPO artifacts.
 The SFT objective is assistant-token cross-entropy; the GRPO objective and reward
-remain unchanged. Both GRPO phases require a verified SFT result; a GRPO-only
-notebook branch is no longer available. Real pretrained SFT/GRPO on CUDA remains unverified
+remain unchanged. SFT + GRPO requires a verified SFT result; independent GRPO only restores the
+pre-SFT adapter and uses its own smoke/full phases. Real pretrained SFT/GRPO on CUDA remains unverified
 on the CPU development host.
 
 The supervised-stage validation passed 118 host tests (9 optional pinned skips)
@@ -386,7 +386,7 @@ updated LoRA values. All 20 notebook code cells completed CPU preflight. See
 `notebooks/reports/sft_grpo_validation.json` for that stage’s evidence.
 
 
-## Train/test and three-stage evaluation update
+## Train/test and four-variant evaluation update
 
 The full dataset now contains 2,667 train and 1,067 test questions; the pilot has
 94 train and 41 test questions. Every former validation row moves to test with
@@ -397,16 +397,26 @@ quotas preserve the original per-hop rounding rather than changing questions.
 New generation produces only train/test files. Optional composition holdouts are
 marked inside test and count toward its configured total.
 
-The notebook selects `test_ids` once and uses that exact ordered list for vanilla,
-SFT, and SFT + GRPO, with the same tools, limits and greedy decoding. SFT and GRPO
-remain disjoint training-instance partitions. Both GRPO phases reject a missing
-verified SFT result. The final policy continues the learned SFT adapter; no
-GRPO-only policy branch or separate validation evaluation remains. Comparison
-columns are `vanilla`, `SFT`, and `SFT + GRPO`, saved under
-`evaluation/vanilla_sft_sft_grpo_test_comparison.json`. Periodic test monitoring
-uses a subset of those same IDs and does not select checkpoints or alter the
-fixed training schedule.
+The notebook selects `test_ids` once and uses the same ordered list for vanilla,
+SFT, SFT + GRPO and independent GRPO only. Both RL variants use the same GRPO
+pool, excluding the reserved SFT instances, and have matching hop schedules,
+seeds, reward, decoding limits and budgets. The independent variant restores the
+saved initial adapter onto the same frozen quantized base and verifies an exact
+value fingerprint before creating its new optimizer. SFT + GRPO still requires
+verified SFT; each full phase requires its own verified smoke.
 
-Current checks and source fingerprints are recorded in
-`notebooks/reports/train_test_pipeline_validation.json`; earlier validation JSON
-files describe their respective historical implementations.
+`training/artifacts.py` persists per-variant metrics, raw/per-question rewards
+and standalone HTML cards immediately after evaluation. It consolidates each RL
+phase's live diagnostics into episodic returns, raw/HTML trajectories and PNG
+curves on both success and failure. `training/experiments.py` orchestrates the
+same smoke/full path for both RL variants, with separate checkpoint directories
+and directly streamed diagnostic logs. Evaluation now flushes completed raw
+trajectories alongside per-question rewards, preserving both after interruption.
+
+Artifacts live under `RUN_ROOT/variants/{vanilla,sft,sft_grpo,grpo_only}/`.
+`comparison.json` is refreshed after every completed variant; incomplete results
+have no aggregate score. The final notebook code cell only ZIPs these saved
+artifacts and displays a link, without requiring model or trainer state. Large
+optimizer checkpoints and Hub caches remain excluded. See README for the exact
+layout and `notebooks/reports/four_variant_validation.json` for current checks.
+Earlier JSON reports describe their respective historical implementations.

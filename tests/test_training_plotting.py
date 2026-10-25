@@ -24,16 +24,14 @@ def test_notebook_return_and_behavior_panels_use_matching_series(tmp_path, monke
     run = tmp_path / "run"
     run.mkdir()
     plotted = []
-    def capture_plot():
+    original_save = plt.Figure.savefig
+    def capture_plot(figure, *args, **kwargs):
         plotted.append([(ax.get_title(), [list(line.get_ydata()) for line in ax.lines])
-                        for ax in plt.gcf().axes])
-    monkeypatch.setattr(plt, "show", capture_plot)
-    notebook = json.loads(Path("notebooks/02_grpo_training_kaggle.ipynb").read_text())
-    code = next("".join(c["source"]) for c in notebook["cells"]
-                if c["cell_type"] == "code" and "def plot_measured(" in "".join(c["source"]))
-    exec(code, {"Path": Path, "json": json, "pd": pd, "shutil": shutil,
-                "CHECKPOINT_ROOT": checkpoint.parent, "RUN_ROOT": run,
-                "MEMORY": [], "display": lambda *args: None})
+                        for ax in figure.axes])
+        return original_save(figure, *args, **kwargs)
+    monkeypatch.setattr(plt.Figure, "savefig", capture_plot)
+    from kg_rlvr.training.artifacts import persist_rl_diagnostics
+    persist_rl_diagnostics(run, [checkpoint])
     titles = ["Mean episodic return (answer + retrieval)", "All-zero reward groups",
               "Zero-variance comparison groups", "Tool calls per episode",
               "Invalid tool-call fraction", "Answer submission fraction"]

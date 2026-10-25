@@ -188,4 +188,6 @@ def test_partial_evaluation_retains_completed_rewards_without_claiming_full_metr
     rows = [json.loads(line) for line in (tmp_path / "partial_rewards.jsonl").read_text().splitlines()]
     assert len(rows) == 1 and rows[0]["reward"] == 1 and rows[0]["training_step"] == 3
     assert not (tmp_path / "partial_metrics.json").exists()
+    saved_traces = [json.loads(line) for line in (tmp_path / "partial_trajectories.jsonl").read_text().splitlines()]
+    assert len(saved_traces) == 1 and saved_traces[0]["task_id"] == q["id"]
     assert model.training

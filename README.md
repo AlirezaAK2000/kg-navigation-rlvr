@@ -463,8 +463,11 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    Run All.
 5. Defaults evaluate vanilla on 30 fixed test questions, train SFT for one pass
    over 200 verified demonstrations, evaluate SFT on the same questions, and
-   attempt eight genuine GRPO smoke steps before evaluating SFT + GRPO. `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
-   it explicitly for the initial 30 full-phase updates. Training defaults to
+   attempt eight genuine GRPO smoke steps before evaluating SFT + GRPO. It then
+   restores the initial adapter and runs GRPO only with the same budget.
+   `RUN_GRPO_ONLY=True` enables this independent RL baseline.
+   `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
+   it explicitly for 30 full-phase updates per RL variant. Training defaults to
    hops `[1, 2, 3]`; any nonempty combination of `[1, 2, 3, 4]` is supported.
    Evaluation defaults to `[1, 2, 3, 4]`. `SINGLE_ANSWER_ONLY=True` removes questions
    with multiple final answers from every model phase before deduplication/caps,
@@ -490,9 +493,9 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
 6. Inspect actual rewards, malformed calls, submissions, truncations, homogeneous
    groups and LoRA deltas. Homogeneous combined rewards can produce no learning
    signal; such a smoke run is diagnosed rather than reported as success.
-   The default smoke samples 64 episodes across eight groups. On failure it
-   displays group rewards, trainer metrics and failed trajectories, and saves
-   `smoke_diagnostics.json` under the run directory. The shared prompt emphasizes
+   Each default smoke samples 64 episodes across eight groups. On failure,
+   raw logs, partial trajectories, status and failure details remain in that
+   variant’s directory; a failed smoke never counts as a verified update. The shared prompt emphasizes
    completing the relationships in the question and checking the answer type.
    After a prompt change, recompute the vanilla baseline with a fresh `RUN_NAME`.
 7. Download the adapter/diagnostics ZIP or save a Kaggle version with outputs.
@@ -520,7 +523,7 @@ and a complete checkpoint before GRPO begins. Its optimizer is released between
 stages; the SFT adapter values are preserved when constructing GRPO.
 
 The notebook saves `stage_partition.json`, separate `training_partitions/sft.jsonl`
-and `grpo.jsonl`, and `sft/demonstrations.jsonl` under the run directory. It checks
+and `grpo.jsonl`, and `variants/sft/demonstrations.jsonl` under the run directory. It checks
 stage separation by question ID, semantic query instance and public prompt, and
 the GRPO constructor checks its pool against reserved SFT instances again.
 `SFT_EXAMPLES` is independent of the GRPO example cap. The SFT adapter, losses,
@@ -529,14 +532,41 @@ formatted SFT-only output inspection uses the same test questions as the
 vanilla and SFT + GRPO models. The download ZIP includes SFT artifacts even for an
 SFT-only run (`RUN_SMOKE_TEST=False`, `RUN_FULL_TRAINING=False`).
 
-The notebook compares exactly **vanilla, SFT, and SFT + GRPO**. GRPO smoke and
-full training require the verified SFT result and continue that adapter; the
-GRPO-only switch has been removed. The default run name is
-`kg_sft_grpo_seed41_train_test`. At one SFT epoch the default gives 25 supervised
-updates, followed by eight GRPO smoke updates and, when enabled, 30 full GRPO
-updates. The final comparison is saved as
-`evaluation/vanilla_sft_sft_grpo_test_comparison.json`; individual stages use
-`vanilla_test_*`, `sft_test_*`, and `sft_grpo_test_*` filenames.
+The notebook compares **vanilla, SFT, SFT + GRPO, and GRPO only** on the same
+ordered test IDs. SFT + GRPO requires verified SFT; GRPO only reloads the saved
+untrained adapter onto the unchanged frozen base. Its adapter-value fingerprint
+must match the pre-SFT initialization. Both RL variants exclude reserved SFT
+instances and use the identical GRPO pool, hop schedule, reward, seed and budgets.
+No second base-model copy is allocated on the GPU.
+
+The default run name is `kg_four_variants_seed41`. One SFT epoch gives 25
+supervised updates. Each RL variant then gets eight smoke updates and, with full
+training enabled, 30 full updates. `RESUME_FROM_CHECKPOINT` applies to SFT + GRPO;
+`GRPO_ONLY_RESUME_FROM_CHECKPOINT` is separate. A GRPO-only full phase requires
+its own successful smoke gate. Disable `RUN_GRPO_ONLY` to omit its measured
+scores explicitly; missing scores are never filled with zero.
+
+**Results are saved after each variant, not deferred to the notebook end.**
+Each policy has its own `variants/<variant>/` directory with `status.json`,
+`summary.json`, `evaluation/test_metrics.json`, per-question `test_rewards.jsonl`,
+raw `test_trajectories.jsonl` and a standalone `evaluation/trajectories.html` using
+the same inspection cards as the notebook. Each completed evaluation refreshes
+`comparison.json` with the four policy columns. Training adapters are saved
+before evaluation so an evaluation failure does not lose the learned weights.
+
+For both RL variants, raw rollouts, optimizer/gradient/time/memory logs and
+periodic test evaluations stream directly into `training/smoke/` and
+`training/full/` inside that variant’s folder. At every phase boundary, including
+failure, the notebook saves consolidated metrics, `episodic_returns.jsonl`,
+`training_trajectories.jsonl`, `training_trajectories.html` and measured PNG curves.
+`episodic_return` is the combined answer-plus-retrieval reward; binary correctness
+remains separately available as `reward`. The HTML preserves every stored episode
+in order, including failures, with input prompts, raw model output and tool responses.
+
+The last code cell **only packages saved files** into
+`<RUN_NAME>_variants_and_diagnostics.zip` and displays a download link. It works
+without a live trainer, including after an interrupted later stage. Checkpoints
+and Hub caches are excluded; save optimizer checkpoints separately for resumption.
 
 The pinned training stack is Torch **2.6.0/cu124**, Transformers **5.3.0**, TRL
 **1.8.0**, PEFT **0.18.1**, Accelerate **1.10.1**, bitsandbytes **0.49.2**,
@@ -552,13 +582,12 @@ section 1, wait for pip to finish, restart the Python kernel, then set it back
 to `False` and run from the beginning. A new Kaggle session/image needs its own
 dependency setup. The current notebook checks every pin in section 1 before
 importing the graph/ML backend, so missing TRL/bitsandbytes and version differences
-are reported there. For vanilla-baseline-only evaluation, use `RUN_BASELINE=True`,
-`RUN_SMOKE_TEST=False`, and `RUN_FULL_TRAINING=False`.
+are reported there. For vanilla-baseline-only evaluation, execute through section 6 and stop before SFT.
 
 During smoke and full training, `EVALUATE_EVERY_STEPS=1` evaluates the same
 `PERIODIC_EVAL_SIZE=6` fixed test questions after each optimizer step.
 These monitoring scores never enter gradients, choose checkpoints, trigger early
-stopping or alter the fixed schedule. All three stage evaluations reuse the
+stopping or alter the fixed schedule. All four variant evaluations reuse the
 same test IDs and decoding/runtime limits.
 Increase the interval to reduce evaluation time, or set it to 0 to disable it.
 Evaluation progress shows each completed question's reward and the running mean;
@@ -569,11 +598,11 @@ remain binary final-answer checks. Separate fields report `gold_entity_retrieved
 `retrieval_reward` and combined `training_reward`, with aggregate retrieval-success
 rate and mean training reward. These diagnostics do not change evaluation accuracy.
 Each phase saves `evaluation_metrics.jsonl` and `evaluation_rewards.jsonl`, with
-per-step files under `periodic_evaluation/`. Section 10 also exports consolidated
-copies under the run directory. Baseline, final evaluation and reload additionally
-save label-specific `_rewards.jsonl` files. Completed-question rewards are flushed
+per-step files under `periodic_evaluation/`. Consolidated copies are saved in
+each RL variant directory at its phase boundary. Each variant evaluation also
+saves its own `_rewards.jsonl` files. Completed-question rewards are flushed
 to disk even if a later evaluation episode fails; a partial run has no new
-aggregate success claim. Validation rewards never contribute to GRPO updates.
+aggregate success claim. Test monitoring rewards never contribute to GRPO updates.
 
 The notebook includes formatted trajectory inspection immediately after baseline
 evaluation, training, and post-training evaluation. Cards show the input messages,
@@ -581,7 +610,7 @@ expandable full Qwen input with tool schemas, raw assistant text, parsed tool
 arguments, and actual tool responses in order. Training inspection reads saved
 rollouts; evaluation inspection uses existing traces. Neither invokes the model.
 Use `INSPECT_EXAMPLES` and `INSPECT_OFFSET` to browse consecutive episodes, with
-matching offsets for vanilla/SFT/SFT + GRPO test outputs. Failures are not filtered out.
+matching offsets for vanilla/SFT/SFT + GRPO/GRPO-only test outputs. Failures are not filtered out.
 
 `SHOW_PROGRESS=True` displays progress throughout model use. Downloads and weight
 loading use native Hugging Face bars; prompt checks and evaluations show completed
@@ -637,13 +666,20 @@ Outputs on Kaggle:
 
 ```text
 /kaggle/working/
-  checkpoints/<RUN_NAME>/smoke/   # real smoke checkpoints + raw rollout/trainer logs
-  checkpoints/<RUN_NAME>/full/    # full trainer checkpoints, optimizer/scheduler/RNG
-  runs/<RUN_NAME>/                # fixed task IDs, metrics, figures, evaluations,
-                                 # actual trajectories and run_evidence.json
-  grpo_adapter/                   # adapter weights, tokenizer and training manifest
-  <RUN_NAME>_adapter_and_diagnostics.zip
-  hf_cache/                       # downloaded base model cache, excluded from ZIP
+  checkpoints/<RUN_NAME>/
+    sft/                         # supervised optimizer/scheduler/RNG checkpoint
+    sft_grpo/{smoke,full}/        # SFT + GRPO optimizer checkpoints
+    grpo_only/{smoke,full}/       # independent GRPO optimizer checkpoints
+  runs/<RUN_NAME>/
+    variants/
+      vanilla/                   # initial adapter, test metrics, rewards, HTML
+      sft/                       # demonstrations, losses, adapter, test results
+      sft_grpo/                  # adapter, returns, metrics, curves, trajectories
+      grpo_only/                 # independent adapter and the same diagnostics
+    comparison.json              # refreshed after every completed evaluation
+    run_environment.json         # model, versions, source hashes and fixed IDs
+  <RUN_NAME>_variants_and_diagnostics.zip
+  hf_cache/                       # excluded from ZIP
 ```
 
 `RESUME_FROM_CHECKPOINT` accepts a complete trainer checkpoint with the original

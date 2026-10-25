@@ -107,7 +107,7 @@ class AssistantOnlyCollator:
 
 
 def build_sft_trainer(model, tokenizer, rows, output_dir, epochs=1, accumulation=8, learning_rate=2e-5,
-                      seed=41, show_progress=True, cpu=False):
+                      seed=41, show_progress=True, cpu=False, diagnostics_dir=None):
     from datasets import Dataset
     from transformers import Trainer, TrainingArguments
     from .grpo import assert_lora_fp32, make_metrics_callback, native_bf16_supported
@@ -128,7 +128,7 @@ def build_sft_trainer(model, tokenizer, rows, output_dir, epochs=1, accumulation
         use_cpu=cpu, eval_strategy="no", save_strategy="epoch", save_total_limit=1, save_only_model=False,
         logging_steps=1, logging_nan_inf_filter=False, report_to=[], seed=seed, data_seed=seed,
         dataloader_num_workers=0, remove_unused_columns=False, disable_tqdm=not show_progress)
-    callback = make_metrics_callback(output_dir)
+    callback = make_metrics_callback(diagnostics_dir or output_dir)
     trainer = Trainer(model=model, args=args, train_dataset=Dataset.from_list(rows), processing_class=tokenizer,
                       data_collator=AssistantOnlyCollator(tokenizer.pad_token_id), callbacks=[callback])
     assert_lora_fp32(trainer.model)
