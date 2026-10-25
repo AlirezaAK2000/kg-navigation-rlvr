@@ -25,7 +25,7 @@ def test_single_answer_subset_filters_before_caps_and_preserves_source(single_st
     source = read_questions("data")
     by_id = {q["id"]: q for q in source}
     assert set(SINGLE_ANSWER_TEMPLATES) == set(PROGRAM_BY_ID)
-    for split, expected in [("train", 2449), ("validation", 364), ("test", 619)]:
+    for split, expected in [("train", 2449), ("test", 983)]:
         ids = single_store.select(split, [1, 2, 3, 4], unique_instances=False)
         assert len(ids) == expected
         assert set(ids) == {q["id"] for q in source if q["split"] == split and len(q["answer_ids"]) == 1}

@@ -22,24 +22,19 @@
     "heldout_program_ids": [],
     "quotas": {
       "test": {
-        "1": 167,
-        "2": 167,
-        "3": 167,
-        "4": 166
+        "1": 267,
+        "2": 267,
+        "3": 267,
+        "4": 266
       },
       "train": {
         "1": 667,
         "2": 667,
         "3": 667,
         "4": 666
-      },
-      "validation": {
-        "1": 100,
-        "2": 100,
-        "3": 100,
-        "4": 100
       }
-    }
+    },
+    "split_migration": "metadata/split_migration.json"
   },
   "graph": {
     "entity_count": 2000,
@@ -300,353 +295,9 @@
         ]
       ],
       "shared_compositions": 43,
-      "shared_reference_entities": 748,
+      "shared_reference_entities": 993,
       "shared_relation_operations": 20,
-      "shared_start_entities": 166
-    },
-    "test__validation": {
-      "shared_composition_paths": [
-        [
-          "authored_by",
-          "works_at"
-        ],
-        [
-          "authored_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "authored_by",
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ],
-        [
-          "based_in"
-        ],
-        [
-          "based_in",
-          "city_in_country"
-        ],
-        [
-          "cites"
-        ],
-        [
-          "cites",
-          "authored_by"
-        ],
-        [
-          "cites",
-          "authored_by",
-          "works_at"
-        ],
-        [
-          "cites",
-          "authored_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "city_in_country"
-        ],
-        [
-          "contributes_to"
-        ],
-        [
-          "funded_by"
-        ],
-        [
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "funded_by",
-          "based_in",
-          "city_in_country"
-        ],
-        [
-          "inv:authored_by"
-        ],
-        [
-          "inv:authored_by",
-          "produced_by",
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "inv:investigates",
-          "funded_by"
-        ],
-        [
-          "inv:investigates",
-          "led_by",
-          "works_at"
-        ],
-        [
-          "inv:investigates",
-          "led_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "inv:led_by"
-        ],
-        [
-          "inv:produced_by"
-        ],
-        [
-          "inv:works_at"
-        ],
-        [
-          "inv:works_at",
-          "inv:led_by"
-        ],
-        [
-          "inv:works_at",
-          "inv:led_by",
-          "funded_by"
-        ],
-        [
-          "inv:works_at",
-          "inv:led_by",
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "investigates"
-        ],
-        [
-          "led_by"
-        ],
-        [
-          "led_by",
-          "works_at"
-        ],
-        [
-          "led_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "led_by",
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ],
-        [
-          "located_in_city"
-        ],
-        [
-          "located_in_city",
-          "city_in_country"
-        ],
-        [
-          "produced_by"
-        ],
-        [
-          "produced_by",
-          "funded_by"
-        ],
-        [
-          "produced_by",
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "produced_by",
-          "funded_by",
-          "based_in",
-          "city_in_country"
-        ],
-        [
-          "specializes_in"
-        ],
-        [
-          "works_at"
-        ],
-        [
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ]
-      ],
-      "shared_compositions": 40,
-      "shared_reference_entities": 308,
-      "shared_relation_operations": 17,
-      "shared_start_entities": 34
-    },
-    "train__validation": {
-      "shared_composition_paths": [
-        [
-          "authored_by",
-          "works_at"
-        ],
-        [
-          "authored_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "authored_by",
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ],
-        [
-          "based_in"
-        ],
-        [
-          "based_in",
-          "city_in_country"
-        ],
-        [
-          "cites"
-        ],
-        [
-          "cites",
-          "authored_by"
-        ],
-        [
-          "cites",
-          "authored_by",
-          "works_at"
-        ],
-        [
-          "cites",
-          "authored_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "city_in_country"
-        ],
-        [
-          "contributes_to"
-        ],
-        [
-          "funded_by"
-        ],
-        [
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "funded_by",
-          "based_in",
-          "city_in_country"
-        ],
-        [
-          "inv:authored_by"
-        ],
-        [
-          "inv:investigates",
-          "funded_by"
-        ],
-        [
-          "inv:investigates",
-          "led_by",
-          "works_at"
-        ],
-        [
-          "inv:investigates",
-          "led_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "inv:led_by"
-        ],
-        [
-          "inv:produced_by"
-        ],
-        [
-          "inv:works_at"
-        ],
-        [
-          "inv:works_at",
-          "inv:led_by"
-        ],
-        [
-          "inv:works_at",
-          "inv:led_by",
-          "funded_by"
-        ],
-        [
-          "inv:works_at",
-          "inv:led_by",
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "investigates"
-        ],
-        [
-          "led_by"
-        ],
-        [
-          "led_by",
-          "works_at"
-        ],
-        [
-          "led_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "led_by",
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ],
-        [
-          "located_in_city"
-        ],
-        [
-          "located_in_city",
-          "city_in_country"
-        ],
-        [
-          "produced_by"
-        ],
-        [
-          "produced_by",
-          "funded_by"
-        ],
-        [
-          "produced_by",
-          "funded_by",
-          "based_in"
-        ],
-        [
-          "produced_by",
-          "funded_by",
-          "based_in",
-          "city_in_country"
-        ],
-        [
-          "specializes_in"
-        ],
-        [
-          "works_at"
-        ],
-        [
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ]
-      ],
-      "shared_compositions": 39,
-      "shared_reference_entities": 535,
-      "shared_relation_operations": 17,
-      "shared_start_entities": 102
+      "shared_start_entities": 248
     }
   },
   "questions": {
@@ -732,28 +383,21 @@
     },
     "compositions_per_split": {
       "test": 44,
-      "train": 45,
-      "validation": 40
+      "train": 45
     },
     "count": 3734,
     "counts_by_split_and_hop": {
       "test": {
-        "1": 167,
-        "2": 167,
-        "3": 167,
-        "4": 166
+        "1": 267,
+        "2": 267,
+        "3": 267,
+        "4": 266
       },
       "train": {
         "1": 667,
         "2": 667,
         "3": 667,
         "4": 666
-      },
-      "validation": {
-        "1": 100,
-        "2": 100,
-        "3": 100,
-        "4": 100
       }
     },
     "most_common_answer_sets": [
@@ -789,25 +433,25 @@
       },
       {
         "answers": [
-          "country_000039"
-        ],
-        "count": 30
-      },
-      {
-        "answers": [
           "country_000017"
         ],
         "count": 30
       },
       {
         "answers": [
-          "country_000035"
+          "country_000039"
+        ],
+        "count": 30
+      },
+      {
+        "answers": [
+          "country_000030"
         ],
         "count": 28
       },
       {
         "answers": [
-          "country_000030"
+          "country_000000"
         ],
         "count": 28
       },

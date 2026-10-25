@@ -49,7 +49,8 @@ been removed. Statistical and training-metric charts remain.
 | Matplotlib / psutil / jmespath | 3.9.4 / 7.2.2 / 1.0.1 | Imported with the pinned stack |
 
 Qwen3 uses a BPE tokenizer; SentencePiece is unnecessary. vLLM, FlashAttention,
-SFT, reward models and an LLM judge are not installed by this workflow.
+Reward models and an LLM judge are not installed by this workflow. Supervised
+fine-tuning uses the existing pinned Transformers Trainer and LoRA adapter.
 An attempted PEFT 0.19.0 adapter construction failed with Torch 2.6 because it
 referenced an unavailable float8 dtype; 0.18.1 passed the actual adapter test.
 PyArrow 26 also failed with the selected NumPy; the tested pin is 21.0.0.
@@ -110,12 +111,13 @@ for checkpoint resumption, and planned/actual hops are exported.
 `SINGLE_ANSWER_ONLY=True` filters complete gold sets before deduplication/caps and
 uses reviewed singular templates for all baseline/training/evaluation phases.
 Retained original IDs and split assignments are unchanged. Before deduplication,
-the full source provides 2,449 train, 364 validation and 619 test questions. Source
+the full source provides 2,449 train and 983 test questions. Source
 files remain unchanged; active filtered records and selection counts are exported
 under each run. Equivalent source paraphrases resolve to the first original ID
 chosen by unique-instance selection. No gold answer ID or path enters prompts.
-Validation and test default to 30 separately selected questions each, balanced
-across the configured evaluation hops. Fixed IDs are saved before model loading.
+All three stages use the same 30 fixed test questions, balanced across the
+configured evaluation hops. `TEST_EVAL_SIZE=None` uses every eligible unique
+test instance. Fixed IDs are saved before model loading; no validation split remains.
 
 Limits default to 12 tool calls, 128 model tokens per turn, 1,536 total completion
 tokens including observations, 1,024 prompt tokens and 3,072 total context tokens.
@@ -169,9 +171,9 @@ so old incompatible checkpoints are rejected.
 
 | Check | Result |
 |---|---|
-| Full local pytest suite | **110 passed, 6 skipped**; skips are optional pinned-stack tests in the ordinary environment |
-| Isolated pinned-stack full suite | **113 passed, 1 skipped in the isolated pinned environment**, including all 6 API checks; real TRL config/weighted sampler/reward/mask boundaries, real Qwen BPE template, tiny CPU PEFT adapter save/reload. Notebook-setup module skipped because nbformat is absent |
-| Notebook execution | **18 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
+| Full local pytest suite | **118 passed, 9 skipped**; skips are optional pinned-stack tests in the ordinary environment |
+| Isolated pinned-stack full suite | **124 passed, 1 skipped in the isolated pinned environment**, including all 6 GRPO API checks and supervised training checks; real TRL config/weighted sampler/reward/mask boundaries, real Qwen BPE template, tiny CPU PEFT adapter save/reload. Notebook-setup module skipped because nbformat is absent |
+| Notebook execution | **20 code cells, zero error outputs**, CPU preflight using a real Jupyter kernel |
 | Kaggle package setup regression suite | **3 passed**; reproduces missing TRL/bitsandbytes and version drift, verifies the section-1 gate and recovery instructions |
 | Model progress and evaluation reward checks | **8 passed** with scripted CPU fixtures; real tqdm counters, evaluation/trajectory totals, unchanged episode results/RNG, and partial progress on errors |
 | Precision regression | Real TRL constructor's quantized-model dtype branch exercised on a small CPU architecture with a metadata flag; exact FP32 adapter restoration and late-recast rejection verified. Three CPU parameter/GradScaler tests pass; CUDA NF4/GRPO remains unverified |
@@ -261,7 +263,7 @@ its changing base environment and package installation in the
    has already released trainers and reloaded the adapter for inference.
    Configure hops, pool size, G, accumulation, token/call budgets, learning
    rate, steps, checkpoint interval and evaluation interval near the beginning.
-7. Run post-training validation/test evaluation, export/reload and trajectory
+7. Run SFT + GRPO test evaluation, export/reload and trajectory
    cells. Inspect measured base-versus-trained comparisons without assuming
    improvement. The final cell packages adapter and diagnostics for download.
 8. Save a Kaggle version with outputs or download the ZIP. Download full trainer
@@ -310,7 +312,7 @@ earlier API and RDF migration reports retain their historical scope.
 
 ## Reward reporting at training-time evaluation
 
-`EVALUATE_EVERY_STEPS=1` enables greedy evaluation of the same six fixed validation
+`EVALUATE_EVERY_STEPS=1` enables greedy evaluation of the same six fixed test
 questions after each smoke/full optimizer step. Larger positive intervals reduce
 inference cost; zero disables periodic evaluation. The callback saves one summary
 and one reward row per completed question, tagged with phase and optimizer step,
@@ -320,7 +322,7 @@ under the binary final-answer verifier. Separate columns report retrieval succes
 retrieval bonus and combined training reward; these diagnostics do not change
 answer accuracy or contribute evaluation rewards to optimization.
 Evaluation preserves the training/evaluation mode and PyTorch RNG state and its
-rewards never enter the optimizer. The notebook displays a separate validation
+rewards never enter the optimizer. The notebook displays a separate test-monitoring
 reward table/curve and exports consolidated JSONL in the run directory. Each
 baseline/final/reload evaluation also writes label-specific reward JSONL; streaming
 flushes preserve completed-question rewards if a later generation fails.
@@ -342,3 +344,69 @@ The retrieval-success signal is adapted from
 The 0.2 bonus is this project's experimental weight. The current implementation
 uses one scalar reward per episode; it does not implement KG-R1's turn-level
 advantage assignment. Correctness remains the primary evaluation metric.
+
+## Supervised warm start with separate training data
+
+The notebook now runs vanilla evaluation, assistant-only SFT, SFT test evaluation,
+and GRPO in that order. The required SFT stage reserves 200 distinct train-split instances
+(40/80/80 by hop), independently of the GRPO pool cap. The remaining 733 unique
+one/two/three-hop instances are used by both GRPO smoke and full training.
+Reservation occurs before caps; all paraphrases of a reserved query remain out
+of GRPO. Runtime checks compare IDs, query-instance signatures and prompts across
+SFT, GRPO and test, and the GRPO constructor checks SFT exclusion.
+Graph entities and facts may be shared; no disjoint-graph claim is made.
+
+`training/sft.py` builds demonstrations from train-only witness paths, executing
+relation discovery, neighbor retrieval and final submission with the actual
+GraphEnvironment. Its encoder replays them through the same Qwen codec, token
+ledger and tool limits as inference. Initial prompts, observations, injected
+prefixes and padding have `labels=-100`; only actual assistant call/EOS tokens
+receive causal-LM loss. All 200 default demonstrations fit the existing budgets
+at 816–1,238 total tokens; no truncation or invented observations is used.
+Reference data is explicitly labeled as supervised demonstrations, not model
+trajectories or performance evidence.
+
+Default SFT uses one epoch, microbatch one, accumulation eight and learning rate
+2e-5 (25 optimizer steps). FP32 LoRA storage and hardware-selected AMP compute are
+retained. Finite gradients, changed adapter tensors and a resumable checkpoint
+must verify before GRPO. SFT optimizer state is released between stages. SFT
+adapter fingerprints and partition metadata enter the GRPO warm-start manifest;
+resume requires the matching supervised initialization. SFT-only losses, adapter,
+evaluation and formatted tool traces are separate from final GRPO artifacts.
+The SFT objective is assistant-token cross-entropy; the GRPO objective and reward
+remain unchanged. Both GRPO phases require a verified SFT result; a GRPO-only
+notebook branch is no longer available. Real pretrained SFT/GRPO on CUDA remains unverified
+on the CPU development host.
+
+The supervised-stage validation passed 118 host tests (9 optional pinned skips)
+and 124 pinned-stack tests (1 optional notebook-setup module skip). A further
+targeted check trained the tiny CPU adapter, released its supervised optimizer
+and constructed the actual GRPO trainer, confirming exact preservation of its
+updated LoRA values. All 20 notebook code cells completed CPU preflight. See
+`notebooks/reports/sft_grpo_validation.json` for that stage’s evidence.
+
+
+## Train/test and three-stage evaluation update
+
+The full dataset now contains 2,667 train and 1,067 test questions; the pilot has
+94 train and 41 test questions. Every former validation row moves to test with
+only its split label changed. Original train files and graph files are preserved.
+Each dataset records `metadata/split_migration.json`; fixed-seed verification
+reconstructs the original records and applies the same merge. Explicit pilot hop
+quotas preserve the original per-hop rounding rather than changing questions.
+New generation produces only train/test files. Optional composition holdouts are
+marked inside test and count toward its configured total.
+
+The notebook selects `test_ids` once and uses that exact ordered list for vanilla,
+SFT, and SFT + GRPO, with the same tools, limits and greedy decoding. SFT and GRPO
+remain disjoint training-instance partitions. Both GRPO phases reject a missing
+verified SFT result. The final policy continues the learned SFT adapter; no
+GRPO-only policy branch or separate validation evaluation remains. Comparison
+columns are `vanilla`, `SFT`, and `SFT + GRPO`, saved under
+`evaluation/vanilla_sft_sft_grpo_test_comparison.json`. Periodic test monitoring
+uses a subset of those same IDs and does not select checkpoints or alter the
+fixed training schedule.
+
+Current checks and source fingerprints are recorded in
+`notebooks/reports/train_test_pipeline_validation.json`; earlier validation JSON
+files describe their respective historical implementations.

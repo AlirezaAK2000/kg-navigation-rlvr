@@ -7,6 +7,13 @@ statistics, and RDF/Turtle graph and ontology files for Protégé. An optional K
 notebook adds real multi-turn GRPO training with Qwen3 and NF4 QLoRA; its
 GPU-dependent validation status is documented below.
 
+Only `train` and `test` are dataset splits. The split-only migration preserves all
+3,734 questions and their content; the 400 former validation questions now belong
+to test. The pilot similarly contains 94 train and 41 test questions. Fixed-seed
+checks replay the recorded original configuration and the merge to verify this
+preservation. `hop_counts_by_split`, when set, records exact hop quotas (used by
+the pilot to preserve rounding from its former splits).
+
 Python **3.11+**, **RDFLib 7.6.0**, and **pyparsing 3.2.3** are required. The graph backend uses RDFLib
 for triple storage, parsing, serialization and forward/inverse lookup. `pytest`
 is used for development tests. A saved graph loads locally or on Kaggle without
@@ -14,13 +21,15 @@ a GPU, external database, or network access once dependencies are installed.
 
 ## Included outputs
 
-- `data/`: full dataset, **2,667 train + 400 validation + 667 test** (3,734 total).
-- `pilot_data/`: **135 questions**, split 94/14/27, using the same full-sized graph.
+- `data/`: full dataset, **2,667 train + 1,067 test** (3,734 total).
+- `pilot_data/`: **135 questions**, split 94 train / 41 test, using the same full-sized graph.
 - `data/graph/graph.ttl`: self-contained OWL ontology, labeled individuals and graph facts.
 - `data/metadata/samples.md`: ten seeded random questions with complete answers,
   reference paths, and fresh executable verification.
 - `data/metadata/report.md` and `statistics.json`: readable and machine-readable reports.
 - `data/metadata/validation.json`: independent validation and regeneration checks.
+- `data/metadata/split_migration.json`: provenance for merging the former validation
+  questions into test while retaining every question ID and the original train file.
 - `conversations/`: public, prompt-only conversational JSONL exports.
 
 Open **`data/graph/graph.ttl` in Protégé** to inspect classes, properties and
@@ -66,7 +75,6 @@ data/
     graph.ttl                    # OWL schema + individuals + asserted graph edges
   rl/
     train.jsonl                  # PRIVATE records, including verifier metadata
-    validation.jsonl
     test.jsonl
   metadata/
     query_programs.jsonl         # reviewed program/template catalog
@@ -232,7 +240,7 @@ degree density is controlled by entity/triple counts and extra-relation weights.
   "seed": 2027,
   "graph": {"entity_count": 3000, "triple_count": 8500},
   "questions": {
-    "split_counts": {"train": 2667, "validation": 400, "test": 667},
+    "split_counts": {"train": 2667, "test": 1067},
     "hop_weights": {"1": 1, "2": 1, "3": 1, "4": 1},
     "min_branching_factor": 3.0,
     "max_answer_set_size": 6,
@@ -243,7 +251,7 @@ degree density is controlled by entity/triple counts and extra-relation weights.
 ```
 
 Hop quotas use largest-remainder allocation separately per split. The checked-in
-one-hop extension adds 934 questions (667 train, 100 validation, 167 test) while
+one-hop extension adds 934 questions (667 train, 267 now in test) while
 preserving every original 2–4-hop row, ID, split assignment and graph byte. Its
 20 reviewed one-hop programs cover all 16 forward relations and four inverse
 operations, with three language templates per program. New one-hop rows are
@@ -266,11 +274,13 @@ question text is rejected even within a split.
 - **`start_entity` strategy:** starting IDs are deterministically assigned to
   disjoint ordinary splits. Intermediate/answer entities, facts, and templates
   may still overlap. See `configs/entity_split.json`.
-- **Optional `composition_test`:** reserves whole relation compositions, with
-  all their templates, from every ordinary split. This tests composition
+- **Optional composition holdout:** reserves whole relation compositions, with
+  all their templates, from the ordinary training/test sample. These questions
+  live in `test.jsonl` with `evaluation_category="composition_holdout"`. This tests composition
   generalization, while entities and individual relations may overlap. Start
   IDs may overlap the optional holdout even under `start_entity`. See
-  `configs/composition_holdout.json`; it adds 150 questions beyond the base 3,734.
+  `configs/composition_holdout.json`; it reserves 150 of the configured test questions.
+  The output still has only train and test splits, with unchanged total quotas.
 
 ```bash
 python3.11 scripts/generate_dataset.py --config configs/composition_holdout.json --output composition_data
@@ -347,7 +357,6 @@ If Hugging Face `datasets` is installed in a future training environment:
 from datasets import load_dataset
 dataset = load_dataset("json", data_files={
     "train": "conversations/train.jsonl",
-    "validation": "conversations/validation.jsonl",
     "test": "conversations/test.jsonl",
 })
 assert dataset["train"].column_names == ["prompt"]
@@ -410,20 +419,21 @@ metadata is missing. Near-duplicate screening is a bounded lexical heuristic,
 not an exhaustive semantic comparison. Tool-call charts describe the gold
 executor, not measured model exploration.
 
-## Kaggle GRPO training notebook
+## Kaggle SFT and GRPO training notebook
 
 [`notebooks/02_grpo_training_kaggle.ipynb`](notebooks/02_grpo_training_kaggle.ipynb)
-implements genuine TRL GRPO with real graph interaction, isolated episodes,
+implements assistant-only SFT followed by genuine TRL GRPO with real graph interaction, isolated episodes,
 single-answer questions, correctness-plus-retrieval training rewards, baseline/post-training tool-use evaluation,
 checkpointing, and adapter export/reload. Training uses Qwen/Qwen3-1.7B, NF4
 double quantization, LoRA rank 8 / alpha 16 / dropout 0, non-reentrant gradient
 checkpointing, microbatch 1 and eight generations per question. T4 computation
-uses FP16; emulated BF16 is explicitly excluded. No SFT, vLLM,
-or LLM judge is implemented.
+uses FP16; emulated BF16 is explicitly excluded. SFT uses the pinned Transformers
+Trainer on the same LoRA adapter. No vLLM or LLM judge is implemented.
 
 **Validation status:** non-GPU notebook cells, CPU graph/environment tests, and
 the pinned TRL/Qwen-tokenizer integration were executed locally. A tiny random
-CPU Qwen architecture is used only for an adapter serialization test. The
+CPU Qwen architecture verifies supervised optimizer updates, resumable checkpoint
+saving and preservation of the updated adapter at the GRPO constructor boundary. The
 pretrained model's real tool use, CUDA NF4 loading, genuine GRPO optimizer step,
 T4 peak memory, full checkpoint resumption, and trained-model reload/evaluation
 remain **unverified on Kaggle**. The notebook's smoke gate will refuse to claim
@@ -451,15 +461,18 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    removes unused audio/vision packages whose compiled extensions can conflict
    with Torch. Restart if instructed, set installation back to `False`, then
    Run All.
-5. Defaults evaluate 30 validation questions and attempt eight genuine GPU smoke
-   steps. `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
+5. Defaults evaluate vanilla on 30 fixed test questions, train SFT for one pass
+   over 200 verified demonstrations, evaluate SFT on the same questions, and
+   attempt eight genuine GRPO smoke steps before evaluating SFT + GRPO. `RUN_FULL_TRAINING=False` prevents an automatic long experiment. Enable
    it explicitly for the initial 30 full-phase updates. Training defaults to
    hops `[1, 2, 3]`; any nonempty combination of `[1, 2, 3, 4]` is supported.
    Evaluation defaults to `[1, 2, 3, 4]`. `SINGLE_ANSWER_ONLY=True` removes questions
    with multiple final answers from every model phase before deduplication/caps,
    and uses reviewed singular wording. Original source data and split assignments
    are preserved; active records are exported under the run's `selected_dataset/rl/`.
-   Eligible counts are 2,449 train, 364 validation and 619 test before deduplication.
+   Eligible counts are 2,449 train and 983 test before deduplication.
+   `TEST_EVAL_SIZE=30` selects the shared test subset once; `None` uses the full
+   eligible unique test pool. There is no separate validation split.
    Actual smoke/full training exposure uses `TRAIN_HOP_EXPOSURE={1:0.2,2:0.4,3:0.4}`.
    The ordered schedule gives one/two/two question groups per five updates;
    the default 30-step full run has 6/12/12 groups and eight samples per group.
@@ -471,8 +484,8 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    To follow a completed smoke-only Run All with full training, restart with a
    new `RUN_NAME` and enable full training before Run All; export/reload has
    already released the previous trainers and made that adapter inference-only.
-   To review vanilla-model performance first, run through section 6 and stop,
-   or disable both smoke and full training before Run All. The baseline runs
+   To review vanilla-model performance first, run through section 6 and stop
+   before continuing to the required SFT stage. The baseline runs
    with the LoRA adapter disabled; it is saved before any optimizer update.
 6. Inspect actual rewards, malformed calls, submissions, truncations, homogeneous
    groups and LoRA deltas. Homogeneous combined rewards can produce no learning
@@ -484,6 +497,46 @@ Use a fresh Kaggle Python 3.11/3.12 notebook:
    After a prompt change, recompute the vanilla baseline with a fresh `RUN_NAME`.
 7. Download the adapter/diagnostics ZIP or save a Kaggle version with outputs.
    Save trainer checkpoints separately if you need resumption across sessions.
+
+The required supervised stage is configured with `SFT_EXAMPLES=200`,
+`SFT_EPOCHS=1`, `SFT_LEARNING_RATE=2e-5`, and
+`SFT_GRADIENT_ACCUMULATION_STEPS=8`. The 200 distinct demonstrations comprise
+40 one-hop, 80 two-hop and 80 three-hop questions, drawn only from the source
+training split. Complete query instances and their paraphrases are reserved for
+SFT **before** applying `MAX_TRAIN_EXAMPLES` to GRPO. With the saved dataset, 733
+of the original 933 unique one/two/three-hop instances remain available to GRPO.
+Both GRPO smoke and full training use that remaining pool. Test
+instances are excluded from both training stages. The graph is shared; separation
+is by query instance rather than by graph entity or relation.
+
+SFT targets are executable reference trajectories, not model-generated answers:
+`get_relations` / `get_neighbors` at each hop, followed by a correct submission.
+Every observation comes from the actual graph tools. Tokenization replays the
+same Qwen codec and runtime limits used by model rollouts. Only assistant action
+and EOS tokens receive loss; prompts, tool observations, injected prefixes and
+padding are masked. No observations are fabricated, and no sequence is silently
+truncated to make it fit. SFT must verify finite gradients, changed LoRA weights
+and a complete checkpoint before GRPO begins. Its optimizer is released between
+stages; the SFT adapter values are preserved when constructing GRPO.
+
+The notebook saves `stage_partition.json`, separate `training_partitions/sft.jsonl`
+and `grpo.jsonl`, and `sft/demonstrations.jsonl` under the run directory. It checks
+stage separation by question ID, semantic query instance and public prompt, and
+the GRPO constructor checks its pool against reserved SFT instances again.
+`SFT_EXAMPLES` is independent of the GRPO example cap. The SFT adapter, losses,
+update-verification result and SFT-only model evaluation are saved separately;
+formatted SFT-only output inspection uses the same test questions as the
+vanilla and SFT + GRPO models. The download ZIP includes SFT artifacts even for an
+SFT-only run (`RUN_SMOKE_TEST=False`, `RUN_FULL_TRAINING=False`).
+
+The notebook compares exactly **vanilla, SFT, and SFT + GRPO**. GRPO smoke and
+full training require the verified SFT result and continue that adapter; the
+GRPO-only switch has been removed. The default run name is
+`kg_sft_grpo_seed41_train_test`. At one SFT epoch the default gives 25 supervised
+updates, followed by eight GRPO smoke updates and, when enabled, 30 full GRPO
+updates. The final comparison is saved as
+`evaluation/vanilla_sft_sft_grpo_test_comparison.json`; individual stages use
+`vanilla_test_*`, `sft_test_*`, and `sft_grpo_test_*` filenames.
 
 The pinned training stack is Torch **2.6.0/cu124**, Transformers **5.3.0**, TRL
 **1.8.0**, PEFT **0.18.1**, Accelerate **1.10.1**, bitsandbytes **0.49.2**,
@@ -503,11 +556,14 @@ are reported there. For vanilla-baseline-only evaluation, use `RUN_BASELINE=True
 `RUN_SMOKE_TEST=False`, and `RUN_FULL_TRAINING=False`.
 
 During smoke and full training, `EVALUATE_EVERY_STEPS=1` evaluates the same
-`PERIODIC_EVAL_SIZE=6` fixed validation questions after each optimizer step.
+`PERIODIC_EVAL_SIZE=6` fixed test questions after each optimizer step.
+These monitoring scores never enter gradients, choose checkpoints, trigger early
+stopping or alter the fixed schedule. All three stage evaluations reuse the
+same test IDs and decoding/runtime limits.
 Increase the interval to reduce evaluation time, or set it to 0 to disable it.
 Evaluation progress shows each completed question's reward and the running mean;
 each evaluation prints mean/total reward and per-hop means. A separate table and
-curve show measured validation rewards by optimizer step. Per-question records
+curve show measured test rewards by optimizer step. Per-question records
 include phase, step, question ID, hop, submitted ID and terminal reward. Rewards
 remain binary final-answer checks. Separate fields report `gold_entity_retrieved`,
 `retrieval_reward` and combined `training_reward`, with aggregate retrieval-success
@@ -525,7 +581,7 @@ expandable full Qwen input with tool schemas, raw assistant text, parsed tool
 arguments, and actual tool responses in order. Training inspection reads saved
 rollouts; evaluation inspection uses existing traces. Neither invokes the model.
 Use `INSPECT_EXAMPLES` and `INSPECT_OFFSET` to browse consecutive episodes, with
-matching offsets for baseline/trained validation. Failures are not filtered out.
+matching offsets for vanilla/SFT/SFT + GRPO test outputs. Failures are not filtered out.
 
 `SHOW_PROGRESS=True` displays progress throughout model use. Downloads and weight
 loading use native Hugging Face bars; prompt checks and evaluations show completed
@@ -533,7 +589,7 @@ questions, elapsed time and ETA. During each episode the status shows its questi
 ID, generation turn, executed tool calls and generated-token count. Evaluation
 also displays measured running accuracy and submissions. GRPO sampling counts
 completed trajectories in each batch while the Trainer separately counts optimizer
-steps. The same display applies to periodic validation, held-out test and adapter
+steps. The same display applies to periodic test monitoring, held-out test and adapter
 reload evaluation. Set `SHOW_PROGRESS=False` to disable these bars. `tqdm`, already
 provided by TRL/datasets, chooses notebook widgets or a terminal display.
 

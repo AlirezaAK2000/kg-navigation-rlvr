@@ -33,9 +33,8 @@
     "min_branching_factor": 2.0,
     "paraphrases_per_instance": 2,
     "split_counts": {
-      "test": 667,
-      "train": 2667,
-      "validation": 400
+      "test": 1067,
+      "train": 2667
     },
     "split_strategy": "instance"
   },

@@ -22,24 +22,19 @@
     "heldout_program_ids": [],
     "quotas": {
       "test": {
-        "1": 7,
-        "2": 7,
-        "3": 7,
-        "4": 6
+        "1": 11,
+        "2": 11,
+        "3": 10,
+        "4": 9
       },
       "train": {
         "1": 24,
         "2": 24,
         "3": 23,
         "4": 23
-      },
-      "validation": {
-        "1": 4,
-        "2": 4,
-        "3": 3,
-        "4": 3
       }
-    }
+    },
+    "split_migration": "metadata/split_migration.json"
   },
   "graph": {
     "entity_count": 2000,
@@ -132,6 +127,11 @@
         [
           "authored_by",
           "works_at",
+          "located_in_city"
+        ],
+        [
+          "authored_by",
+          "works_at",
           "located_in_city",
           "city_in_country"
         ],
@@ -143,61 +143,6 @@
         ],
         [
           "investigates"
-        ],
-        [
-          "led_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "works_at"
-        ],
-        [
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "works_at",
-          "located_in_city",
-          "city_in_country"
-        ]
-      ],
-      "shared_compositions": 8,
-      "shared_reference_entities": 5,
-      "shared_relation_operations": 10,
-      "shared_start_entities": 0
-    },
-    "test__validation": {
-      "shared_composition_paths": [
-        [
-          "cites",
-          "authored_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "led_by",
-          "works_at",
-          "located_in_city"
-        ]
-      ],
-      "shared_compositions": 2,
-      "shared_reference_entities": 4,
-      "shared_relation_operations": 8,
-      "shared_start_entities": 0
-    },
-    "train__validation": {
-      "shared_composition_paths": [
-        [
-          "authored_by",
-          "works_at",
-          "located_in_city"
-        ],
-        [
-          "cites",
-          "authored_by",
-          "works_at",
-          "located_in_city"
         ],
         [
           "led_by",
@@ -220,11 +165,23 @@
         ],
         [
           "specializes_in"
+        ],
+        [
+          "works_at"
+        ],
+        [
+          "works_at",
+          "located_in_city"
+        ],
+        [
+          "works_at",
+          "located_in_city",
+          "city_in_country"
         ]
       ],
-      "shared_compositions": 7,
-      "shared_reference_entities": 3,
-      "shared_relation_operations": 10,
+      "shared_compositions": 13,
+      "shared_reference_entities": 8,
+      "shared_relation_operations": 12,
       "shared_start_entities": 0
     }
   },
@@ -275,32 +232,43 @@
       "p90": 6.666666666666667
     },
     "compositions_per_split": {
-      "test": 13,
-      "train": 24,
-      "validation": 7
+      "test": 18,
+      "train": 24
     },
     "count": 135,
     "counts_by_split_and_hop": {
       "test": {
-        "1": 7,
-        "2": 7,
-        "3": 7,
-        "4": 6
+        "1": 11,
+        "2": 11,
+        "3": 10,
+        "4": 9
       },
       "train": {
         "1": 24,
         "2": 24,
         "3": 23,
         "4": 23
-      },
-      "validation": {
-        "1": 4,
-        "2": 4,
-        "3": 3,
-        "4": 3
       }
     },
     "most_common_answer_sets": [
+      {
+        "answers": [
+          "city_000004"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "city_000158"
+        ],
+        "count": 4
+      },
+      {
+        "answers": [
+          "country_000048"
+        ],
+        "count": 4
+      },
       {
         "answers": [
           "university_000039"
@@ -321,25 +289,7 @@
       },
       {
         "answers": [
-          "country_000048"
-        ],
-        "count": 4
-      },
-      {
-        "answers": [
           "country_000028"
-        ],
-        "count": 4
-      },
-      {
-        "answers": [
-          "city_000158"
-        ],
-        "count": 4
-      },
-      {
-        "answers": [
-          "city_000004"
         ],
         "count": 4
       },
@@ -351,15 +301,13 @@
       },
       {
         "answers": [
-          "funder_000032"
+          "city_000053"
         ],
         "count": 2
       },
       {
         "answers": [
-          "project_000028",
-          "project_000113",
-          "project_000203"
+          "country_000022"
         ],
         "count": 2
       }

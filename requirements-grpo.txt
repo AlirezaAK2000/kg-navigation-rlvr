@@ -17,5 +17,6 @@ pandas==2.2.3
 pyarrow==21.0.0
 matplotlib==3.9.4
 psutil==7.2.2
-# Qwen3 uses a BPE tokenizer; sentencepiece, vLLM, FlashAttention and SFT are not needed.
+# Qwen3 uses a BPE tokenizer; sentencepiece, vLLM and FlashAttention are not needed.
+# Assistant-only SFT uses the pinned Transformers Trainer and the existing LoRA adapter.
 # tqdm is already installed by TRL/datasets and supplies model-use progress bars.

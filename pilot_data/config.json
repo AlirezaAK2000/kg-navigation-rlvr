@@ -21,6 +21,20 @@
   "questions": {
     "composition_test_count": 0,
     "holdout_program_fraction": 0.25,
+    "hop_counts_by_split": {
+      "test": {
+        "1": 11,
+        "2": 11,
+        "3": 10,
+        "4": 9
+      },
+      "train": {
+        "1": 24,
+        "2": 24,
+        "3": 23,
+        "4": 23
+      }
+    },
     "hop_weights": {
       "1": 1,
       "2": 1,
@@ -33,9 +47,8 @@
     "min_branching_factor": 2.0,
     "paraphrases_per_instance": 2,
     "split_counts": {
-      "test": 27,
-      "train": 94,
-      "validation": 14
+      "test": 41,
+      "train": 94
     },
     "split_strategy": "instance"
   },

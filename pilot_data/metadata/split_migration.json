@@ -1,0 +1,70 @@
+{
+  "moved_validation_ids": [
+    "q_000071",
+    "q_000072",
+    "q_000073",
+    "q_000074",
+    "q_000075",
+    "q_000076",
+    "q_000077",
+    "q_000078",
+    "q_000079",
+    "q_000080",
+    "q_000125",
+    "q_000126",
+    "q_000127",
+    "q_000128"
+  ],
+  "operation": "merge_validation_into_test",
+  "original_config": {
+    "graph": {
+      "collaboration_degree_target": 4,
+      "entity_count": 2000,
+      "extra_relation_weights": {
+        "authored_by": 4,
+        "cites": 2,
+        "collaborates_with": 3,
+        "contributes_to": 4,
+        "funded_by": 2,
+        "investigates": 1,
+        "partners_with": 1
+      },
+      "leaders_per_project": 1,
+      "max_authors": 4,
+      "max_project_fields": 3,
+      "max_project_funders": 3,
+      "triple_count": 5000,
+      "type_counts": null
+    },
+    "questions": {
+      "composition_test_count": 0,
+      "holdout_program_fraction": 0.25,
+      "hop_counts_by_split": null,
+      "hop_weights": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1
+      },
+      "max_answer_set_size": 8,
+      "max_neighbors_per_response": 64,
+      "max_tool_calls": 80,
+      "min_branching_factor": 2.0,
+      "paraphrases_per_instance": 2,
+      "split_counts": {
+        "test": 27,
+        "train": 94,
+        "validation": 14
+      },
+      "split_strategy": "instance"
+    },
+    "seed": 1729
+  },
+  "original_files_sha256": {
+    "config.json": "ff471808b7d88488684c108bcf4b3779d3de15b1589ca601cdd62e5ac276a178",
+    "rl/test.jsonl": "57ee5f02df62ffb4e2050d5c578279c518425e3da3dced5a09d88b5892842bdf",
+    "rl/train.jsonl": "c13ed039e37c0ed0de0bc7953904d276c94b24bf823683109659736376bcfc75",
+    "rl/validation.jsonl": "376f92e5e52df492d40163e71a64a85f55df4cc4404f3da48a2b583e3d5c0a89"
+  },
+  "version": 1
+}

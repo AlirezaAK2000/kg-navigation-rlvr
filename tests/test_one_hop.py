@@ -19,7 +19,7 @@ from kg_rlvr.validators import validate_dataset, validate_saved_dataset
 @pytest.fixture(scope="module")
 def expanded(graph, config):
     settings = copy.deepcopy(config)
-    settings["questions"].update(split_counts={"train": 56, "validation": 8, "test": 16},
+    settings["questions"].update(split_counts={"train": 56, "test": 24},
                                   hop_weights={"1": 1, "2": 1, "3": 1, "4": 1})
     candidates, _ = generate_candidates(graph, settings)
     questions, _ = split_candidates(graph, candidates, settings)
@@ -36,7 +36,7 @@ def test_adding_one_hop_preserves_existing_rows_and_split_quotas(graph, question
     config, _, mixed = expanded
     assert mixed[:len(questions)] == questions  # includes IDs, wording and all metadata
     assert Counter(q["hop_count"] for q in mixed) == {1: 20, 2: 20, 3: 20, 4: 20}
-    assert Counter(q["split"] for q in mixed if q["hop_count"] == 1) == {"train": 14, "validation": 2, "test": 4}
+    assert Counter(q["split"] for q in mixed if q["hop_count"] == 1) == {"train": 14, "test": 6}
     assert validate_dataset(graph, mixed, config)["valid"]
     grouped = defaultdict(set)
     for q in mixed:
@@ -61,7 +61,7 @@ def test_one_hop_paraphrases_cannot_cross_splits(graph, expanded):
 def test_one_hop_only_config_and_candidate_selection(tmp_path, graph, config):
     path = tmp_path / "config.json"
     path.write_text(json.dumps({"questions": {"hop_weights": {"1": 1},
-                               "split_counts": {"train": 12, "validation": 4, "test": 4}}}))
+                               "split_counts": {"train": 12, "test": 8}}}))
     settings = load_config(path)
     assert settings["questions"]["hop_weights"] == {"1": 1}
     settings["graph"] = copy.deepcopy(config["graph"])
@@ -102,4 +102,4 @@ def test_one_hop_respects_optional_split_strategies(graph, expanded, strategy):
     result = validate_dataset(graph, questions, settings)
     assert result["valid"], result["errors"]
     if strategy == "composition_holdout":
-        assert any(q["hop_count"] == 1 and q["split"] == "composition_test" for q in questions)
+        assert any(q["hop_count"] == 1 and q["split"] == "test" and q.get("evaluation_category") == "composition_holdout" for q in questions)

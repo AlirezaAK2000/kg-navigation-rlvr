@@ -13,7 +13,7 @@ def test_existing_graph_and_question_loading():
     graph, store, report = load_tasks("data")
     assert len(graph.entities) == 2000 and len(graph.triples) == 5000
     assert report["valid"] and report["question_count"] == 3734
-    assert len(store.select("validation", [1, 2, 3, 4], count=30, balanced=True)) == 30
+    assert len(store.select("test", [1, 2, 3, 4], count=30, balanced=True)) == 30
 
 
 def test_real_tools_multiple_neighbors_and_inverse(graph):

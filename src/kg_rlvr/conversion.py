@@ -23,5 +23,9 @@ def conversational_row(graph, question):
 def export_conversations(graph, questions, directory):
     from pathlib import Path
     directory = Path(directory)
+    if {q["split"] for q in questions} - {"train", "test"}:
+        raise ValueError("Conversation exports support only train and test")
     for split in sorted({q["split"] for q in questions}):
         write_jsonl(directory / f"{split}.jsonl", (conversational_row(graph, q) for q in questions if q["split"] == split))
+    # Re-exporting a migrated dataset must not retain the former third split.
+    (directory / "validation.jsonl").unlink(missing_ok=True)

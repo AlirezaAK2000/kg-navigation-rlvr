@@ -4,7 +4,7 @@ import json
 import pytest
 
 from kg_rlvr.config import allocate, load_config
-from kg_rlvr.conversion import conversational_row, PUBLIC_INSTRUCTIONS
+from kg_rlvr.conversion import conversational_row, export_conversations, PUBLIC_INSTRUCTIONS
 from kg_rlvr.dataset_builder import GenerationError, build_dataset, read_questions, split_candidates
 from kg_rlvr.graph_index import execute
 from kg_rlvr.query_generator import generate_candidates
@@ -14,7 +14,7 @@ from kg_rlvr.validators import validate_dataset, validate_saved_dataset
 
 def test_all_hops_templates_and_complete_answers(graph, questions):
     assert {q["hop_count"] for q in questions} == {2, 3, 4}
-    assert Counter(q["split"] for q in questions) == {"train": 42, "validation": 6, "test": 12}
+    assert Counter(q["split"] for q in questions) == {"train": 42, "test": 18}
     for q in questions:
         assert execute(graph, q["start_entity"], q["relation_path"]).answers == q["answer_ids"]
     assert all(len(p.templates) == 3 for p in PROGRAMS)
@@ -39,8 +39,8 @@ def test_unseen_composition_split(graph, candidates, config):
     config = copy.deepcopy(config)
     config["questions"]["composition_test_count"] = 12
     questions, info = split_candidates(graph, candidates, config)
-    ordinary = {q["program_id"] for q in questions if q["split"] != "composition_test"}
-    unseen = {q["program_id"] for q in questions if q["split"] == "composition_test"}
+    ordinary = {q["program_id"] for q in questions if q.get("evaluation_category") != "composition_holdout"}
+    unseen = {q["program_id"] for q in questions if q.get("evaluation_category") == "composition_holdout"}
     assert unseen and ordinary.isdisjoint(unseen)
     assert unseen.issubset(info["heldout_program_ids"])
     assert validate_dataset(graph, questions, config)["valid"]
@@ -48,7 +48,7 @@ def test_unseen_composition_split(graph, candidates, config):
 
 def test_start_entity_split(graph, candidates, config):
     config = copy.deepcopy(config)
-    config["questions"].update(split_strategy="start_entity", split_counts={"train": 30, "validation": 12, "test": 18})
+    config["questions"].update(split_strategy="start_entity", split_counts={"train": 30, "test": 30})
     questions, _ = split_candidates(graph, candidates, config)
     owners = defaultdict(set)
     for q in questions:
@@ -109,12 +109,17 @@ def test_prompt_export_allowlist(graph, questions):
 
 def test_saved_dataset_reproducibility_and_manifest(tmp_path, config):
     output = tmp_path / "dataset"
-    _, questions, stats = build_dataset(config, output, progress=lambda _: None)
+    graph, questions, stats = build_dataset(config, output, progress=lambda _: None)
     assert len(read_questions(output)) == len(questions)
     result = validate_saved_dataset(output, check_reproducibility=True)
     assert result["valid"] and result["reproducible"]
     assert stats["duplicates"]["cross_split_instance_groups"] == 0
     assert stats["questions"]["counts_by_split_and_hop"]["train"] == {2: 14, 3: 14, 4: 14}
+    conversations = tmp_path / "conversations"
+    conversations.mkdir()
+    (conversations / "validation.jsonl").write_text('legacy validation output\n')
+    export_conversations(graph, questions, conversations)
+    assert {p.stem for p in conversations.glob("*.jsonl")} == {"train", "test"}
     with pytest.raises(GenerationError, match="not empty"):
         build_dataset(config, output, progress=lambda _: None)
     catalog = output / "metadata" / "query_programs.jsonl"

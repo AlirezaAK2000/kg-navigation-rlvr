@@ -105,6 +105,10 @@ def validate_dataset(graph, questions, config=None):
             if not condition:
                 raise ValueError(message)
         try:
+            check(q.get("split") in {"train", "test"}, "Only train and test splits are supported")
+            check(q.get("evaluation_category") in {None, "composition_holdout"}, "Unknown evaluation category")
+            check(q.get("evaluation_category") != "composition_holdout" or q["split"] == "test",
+                  "Composition holdout must be inside test")
             check(qid not in ids, "Duplicate question ID")
             ids.add(qid)
             start, path, answers = q["start_entity"], q["relation_path"], q["answer_ids"]
@@ -140,8 +144,9 @@ def validate_dataset(graph, questions, config=None):
             normalized_text = " ".join(q["question"].casefold().split())
             check(normalized_text not in text_splits, "Duplicate question text")
             text_splits[normalized_text] = q["split"]
-            start_splits[start].add(q["split"])
-            program_splits[program.id].add(q["split"])
+            role = "composition_test" if q.get("evaluation_category") == "composition_holdout" else q["split"]
+            start_splits[start].add(role)
+            program_splits[program.id].add(role)
             if config:
                 settings = config["questions"]
                 d = result.difficulty
@@ -153,15 +158,16 @@ def validate_dataset(graph, questions, config=None):
             errors.append({"id": qid, "error": str(error)})
             bad_ids.add(qid)
     if config:
-        from .config import allocate
+        from .config import split_hop_quotas
         counts = dict(config["questions"]["split_counts"])
-        if config["questions"]["composition_test_count"]:
-            counts["composition_test"] = config["questions"]["composition_test_count"]
+        heldout_count = sum(q.get("evaluation_category") == "composition_holdout" for q in questions)
+        if heldout_count != config["questions"]["composition_test_count"]:
+            errors.append({"id": "splits", "error": "Composition holdout count mismatch"})
         actual = Counter(q.get("split") for q in questions)
         if any(actual[split] != count for split, count in counts.items()) or set(actual) - set(counts):
             errors.append({"id": "splits", "error": f"Split count mismatch: expected {counts}, got {dict(actual)}"})
-        for split, count in counts.items():
-            expected = {int(h): n for h, n in allocate(count, config["questions"]["hop_weights"]).items() if n}
+        for split, quotas in split_hop_quotas(config["questions"]).items():
+            expected = {int(h): n for h, n in quotas.items() if n}
             got = dict(Counter(q["hop_count"] for q in questions if q["split"] == split))
             if expected != got:
                 errors.append({"id": split, "error": f"Hop quota mismatch: expected {expected}, got {got}"})
@@ -193,9 +199,38 @@ def validate_saved_dataset(directory, check_reproducibility=False):
         if any(json.loads(line)["split"] != path.stem for line in path.read_text().splitlines() if line.strip()):
             result["errors"].append({"id": str(path), "error": "Question stored in the wrong split file"})
     if check_reproducibility:
-        regenerated = generate_graph(config)
-        candidates, _ = generate_candidates(regenerated, config)
-        rebuilt, _ = split_candidates(regenerated, candidates, config)
+        # A split-only migration preserves every existing question and its ID.
+        # Replay its recorded original configuration, then apply the same merge.
+        migration_path = directory / "metadata" / "split_migration.json"
+        migration = json.loads(migration_path.read_text()) if migration_path.exists() else None
+        if migration:
+            from .config import DEFAULT, merge
+            original_config = merge(DEFAULT, migration["original_config"])
+            original_counts = original_config["questions"]["split_counts"]
+            original_config["questions"]["split_counts"] = {
+                s: original_counts[s] for s in ("train", "validation", "test")}
+        else:
+            original_config = config
+        regenerated = generate_graph(original_config)
+        candidates, _ = generate_candidates(regenerated, original_config)
+        rebuilt, _ = split_candidates(regenerated, candidates, original_config)
+        if migration:
+            import copy
+            expected_config = copy.deepcopy(original_config)
+            counts = expected_config["questions"]["split_counts"]
+            counts["test"] += counts.pop("validation")
+            if config["questions"].get("hop_counts_by_split") is not None:
+                expected_config["questions"]["hop_counts_by_split"] = {
+                    split: {h: sum(q["hop_count"] == int(h) and
+                                  ("test" if q["split"] == "validation" else q["split"]) == split
+                                  for q in rebuilt) for h in config["questions"]["hop_weights"]}
+                    for split in ("train", "test")}
+            original_ids = sorted(q["id"] for q in rebuilt if q["split"] == "validation")
+            if expected_config != config or original_ids != migration["moved_validation_ids"]:
+                result["errors"].append({"id": "migration", "error": "Split migration provenance mismatch"})
+            for q in rebuilt:
+                if q["split"] == "validation":
+                    q["split"] = "test"
         matches = (regenerated.entities == graph.entities and regenerated.triples == graph.triples
                    and sorted(rebuilt, key=lambda q: q["id"]) == sorted(questions, key=lambda q: q["id"]))
         if not matches:

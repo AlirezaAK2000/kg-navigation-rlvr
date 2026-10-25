@@ -43,9 +43,8 @@ Unique-neighbor node degree: mean 4.58, median 4.0, maximum 19.
 
 | Split | 1 hop | 2 hops | 3 hops | 4 hops | Total |
 |---|---:|---:|---:|---:|---:|
-| test | 7 | 7 | 7 | 6 | 27 |
+| test | 11 | 11 | 10 | 9 | 41 |
 | train | 24 | 24 | 23 | 23 | 94 |
-| validation | 4 | 4 | 3 | 3 | 14 |
 
 71 unique query instances; 29 relation compositions; 7 multi-answer questions.
 Answer-set sizes: mean 1.07, median 1, maximum 3.
@@ -57,9 +56,7 @@ Duplicate question texts: 0; cross-split query-instance groups: 0.
 
 | Splits | Shared compositions | Shared starts | Shared reference entities |
 |---|---:|---:|---:|
-| test__train | 8 | 0 | 5 |
-| test__validation | 2 | 0 | 4 |
-| train__validation | 7 | 0 | 3 |
+| test__train | 13 | 0 | 8 |
 
 ## Generation filters
 

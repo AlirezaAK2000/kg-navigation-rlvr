@@ -62,7 +62,7 @@ Verified reference paths:
 
 Complete answer set verified. Navigation branching: 6.00; reference tool calls: 9.
 
-## q_000073 · 2 hops · validation
+## q_000073 · 2 hops · test
 
 Which funding organizations sponsor the project responsible for Study Nuvvexzae 0211?
 
@@ -74,7 +74,7 @@ Verified reference paths:
 
 Complete answer set verified. Navigation branching: 5.00; reference tool calls: 5.
 
-## q_000071 · 2 hops · validation
+## q_000071 · 2 hops · test
 
 At which universities do the leaders of Project Orvnuvkyr 0264 work?
 

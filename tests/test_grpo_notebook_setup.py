@@ -36,7 +36,7 @@ def test_fresh_kaggle_stops_in_setup_before_importing_backend():
         exec(setup_code(), namespace)
     message = str(raised.value)
     assert "section 1" in message and "INSTALL_DEPENDENCIES=True" in message
-    assert "restart" in message and "RUN_SMOKE_TEST=False" in message
+    assert "restart" in message and "Stop after section 6" in message
     assert namespace["setup_mismatches"]["trl"]["actual"] is None
     assert namespace["setup_mismatches"]["bitsandbytes"]["actual"] is None
     assert "MODEL_REVISIONS" not in namespace  # stopped before the backend import

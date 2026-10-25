@@ -203,7 +203,9 @@ def load_tasks(data_root, max_tool_calls=8, validate=True, single_answer_only=Fa
             raise ValueError(f"Task {q['id']} has an empty gold answer set")
     if not records:
         raise ValueError(f"No QA records under {root / 'rl'}")
-    for split in ("train", "validation", "test"):
+    if {q["split"] for q in records} - {"train", "test"}:
+        raise ValueError("Only train and test splits are supported; migrate older validation records into test")
+    for split in ("train", "test"):
         if not any(q["split"] == split for q in records):
             raise ValueError(f"Required split is missing: {split}")
     config_path = root / "config.json"

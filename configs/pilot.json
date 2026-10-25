@@ -1,5 +1,8 @@
 {
   "questions": {
-    "split_counts": {"train": 94, "validation": 14, "test": 27}
+    "split_counts": {
+      "train": 94,
+      "test": 41
+    }
   }
 }

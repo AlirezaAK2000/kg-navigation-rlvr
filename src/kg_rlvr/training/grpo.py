@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 
 from .environment import make_reward, REWARD_SPEC
-from .sampling import exposure_schedule
+from .sampling import exposure_schedule, assert_disjoint_tasks
 from .rollouts import GRPORollout, append_jsonl, evaluate_policy, evaluation_reward_record
 
 PINS = {"torch": "2.6.0", "transformers": "5.3.0", "trl": "1.8.0", "peft": "0.18.1",
@@ -244,9 +244,11 @@ def make_metrics_callback(output_dir, store=None, tokenizer=None, eval_task_ids=
 
 def build_trainer(model, tokenizer, store, task_ids, limits, output_dir, phase, steps,
                   generations=4, accumulation=4, learning_rate=5e-6, save_steps=10, seed=41,
-                  eval_task_ids=None, eval_every=0, show_progress=True, hop_weights=None):
+                  eval_task_ids=None, eval_every=0, show_progress=True, hop_weights=None, excluded_sft_task_ids=None):
     from datasets import Dataset
     from trl import GRPOTrainer
+    if excluded_sft_task_ids:
+        assert_disjoint_tasks(store, {"sft": excluded_sft_task_ids, "grpo": task_ids})
     if len(task_ids) < accumulation // generations:
         raise ValueError("Not enough unique training rows for one complete GRPO generation batch")
     assert_lora_fp32(model)
@@ -326,7 +328,7 @@ def smoke_diagnostics(output_dir):
                 for trace in traces if trace["reward"] == 0][:2]}
 
 
-def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1):
+def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1, training_kind="GRPO"):
     import torch
     changed, max_change = [], 0.0
     for name, p in model.named_parameters():
@@ -339,8 +341,10 @@ def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1
                 max_change = max(max_change, delta)
     losses = [row["loss"] for row in trainer.state.log_history if "loss" in row]
     if trainer.state.global_step < required_steps or not losses or not all(math.isfinite(x) for x in losses):
-        raise RuntimeError("No verified finite GRPO optimizer steps/losses were recorded")
+        raise RuntimeError(f"No verified finite {training_kind} optimizer steps/losses were recorded")
     if not changed:
+        if training_kind == "SFT":
+            raise RuntimeError("No LoRA parameters changed during SFT; inspect assistant labels and gradient logs")
         raise RuntimeError("No LoRA parameters changed. Inspect zero_reward_group_fraction and zero_variance_group_fraction: homogeneous combined training rewards produce zero advantages. Increase real smoke groups / tool budget or diagnose tool formatting; no successful update is claimed.")
     if not any(row.get("grad_norm", 0) > 0 for row in trainer.state.log_history):
         raise RuntimeError("No positive finite gradient norm was logged")
@@ -356,7 +360,7 @@ def verify_optimizer_update(model, before, trainer, output_dir, required_steps=1
 
 
 def training_manifest(model_name, revision, limits, task_ids, generations, accumulation, learning_rate, seed, r=8, alpha=16,
-                      hop_weights=None, single_answer_only=False):
+                      hop_weights=None, single_answer_only=False, supervised_warm_start=None):
     package = Path(__file__).resolve().parents[1]
     return {"model_name": model_name, "revision": revision, "limits": asdict(limits),
             "task_ids": task_ids, "num_generations": generations, "gradient_accumulation_steps": accumulation,
@@ -365,6 +369,7 @@ def training_manifest(model_name, revision, limits, task_ids, generations, accum
             "trainable_parameter_dtype": "torch.float32",
             "loss_type": "grpo", "versions": dependency_versions(), "reward_spec": dict(REWARD_SPEC),
             "single_answer_only": single_answer_only, "wording_version": "single_v1" if single_answer_only else "source",
+            "supervised_warm_start": supervised_warm_start,
             "training_exposure": {"algorithm": "weighted_deficit_v1",
                                   "hop_weights": {str(h): float(w) for h, w in hop_weights.items()}}
                                  if hop_weights is not None else {"algorithm": "trl_shuffle"},
