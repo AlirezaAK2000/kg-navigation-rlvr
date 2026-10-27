@@ -1,6 +1,0 @@
-{
-  "questions": {
-    "composition_test_count": 150,
-    "holdout_program_fraction": 0.25
-  }
-}

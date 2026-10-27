@@ -37,61 +37,94 @@ def _json(value):
 
 def render_episode_html(trace, *, label="Model", rendered_prompt=None):
     """Preserve chronological raw assistant text and actual tool observations."""
-    blocks = [f'<article class="kg-episode"><header class="kg-header"><h3>{_text(label)} · '
-              f'{_text(trace.get("task_id", "Episode"))}</h3><div>{_text(trace.get("question", ""))}</div>']
-    metadata = {"Hops": trace.get("hop_count"), "Start": trace.get("start_entity"),
-                "Submitted": trace.get("submitted_answer"), "Reward": trace.get("reward"),
-                "Answer correct": trace.get("answer_correct"),
-                "Gold retrieved": trace.get("gold_entity_retrieved"),
-                "Retrieval bonus": trace.get("retrieval_reward"), "Training reward": trace.get("training_reward"),
-                "Tool calls": trace.get("tool_calls"), "End": trace.get("termination_reason")}
-    blocks.append(''.join(f'<span class="kg-badge">{_text(key)}: {_text(value)}</span>'
-                          for key, value in metadata.items() if value is not None))
+    blocks = [
+        f'<article class="kg-episode"><header class="kg-header"><h3>{_text(label)} · '
+        f'{_text(trace.get("task_id", "Episode"))}</h3><div>{_text(trace.get("question", ""))}</div>'
+    ]
+    metadata = {
+        "Hops": trace.get("hop_count"),
+        "Start": trace.get("start_entity"),
+        "Submitted": trace.get("submitted_answer"),
+        "Reward": trace.get("reward"),
+        "Answer correct": trace.get("answer_correct"),
+        "Gold retrieved": trace.get("gold_entity_retrieved"),
+        "Retrieval bonus": trace.get("retrieval_reward"),
+        "Training reward": trace.get("training_reward"),
+        "Tool calls": trace.get("tool_calls"),
+        "End": trace.get("termination_reason"),
+    }
+    blocks.append(
+        "".join(
+            f'<span class="kg-badge">{_text(key)}: {_text(value)}</span>'
+            for key, value in metadata.items()
+            if value is not None
+        )
+    )
     blocks.append('</header><div class="kg-body"><h4>Input prompt</h4>')
     for message in trace.get("prompt", []):
-        blocks.append(f'<div class="kg-block"><strong>{_text(message["role"]).upper()}</strong>'
-                      f'<pre>{_text(message["content"])}</pre></div>')
+        blocks.append(
+            f'<div class="kg-block"><strong>{_text(message["role"]).upper()}</strong>'
+            f'<pre>{_text(message["content"])}</pre></div>'
+        )
     if rendered_prompt is not None:
-        blocks.append('<details><summary>Full initial Qwen input, including tool schemas and chat tokens</summary>'
-                      f'<pre>{_text(rendered_prompt)}</pre></details>')
+        blocks.append(
+            "<details><summary>Full initial Qwen input, including tool schemas and chat tokens</summary>"
+            f"<pre>{_text(rendered_prompt)}</pre></details>"
+        )
     for number, turn in enumerate(trace.get("turns", []), 1):
-        blocks.append(f'<section class="kg-turn"><h4>Turn {number}</h4>'
-                      '<div class="kg-block kg-assistant"><strong>Assistant · raw model output</strong>'
-                      f'<div class="kg-meta">Generated tokens: {_text(turn.get("model_tokens", "unavailable"))}</div>'
-                      f'<pre>{_text(turn.get("raw_assistant", ""))}</pre></div>')
+        blocks.append(
+            f'<section class="kg-turn"><h4>Turn {number}</h4>'
+            '<div class="kg-block kg-assistant"><strong>Assistant · raw model output</strong>'
+            f'<div class="kg-meta">Generated tokens: {_text(turn.get("model_tokens", "unavailable"))}</div>'
+            f'<pre>{_text(turn.get("raw_assistant", ""))}</pre></div>'
+        )
         if "tool_call" in turn:
-            blocks.append('<div class="kg-block kg-call"><strong>Parsed tool call</strong>'
-                          f'<pre>{_json(turn["tool_call"])}</pre></div>')
+            blocks.append(
+                '<div class="kg-block kg-call"><strong>Parsed tool call</strong>'
+                f'<pre>{_json(turn["tool_call"])}</pre></div>'
+            )
         if "observation" in turn:
             observation = turn["observation"]
             failed = isinstance(observation, dict) and observation.get("ok") is False
-            visibility = "Appended to model context" if turn.get("observation_in_context") else "Not appended to model context"
-            blocks.append(f'<div class="kg-block kg-tool{" kg-error" if failed else ""}">'
-                          f'<strong>Tool response</strong><div class="kg-meta">{visibility}</div>'
-                          f'<pre>{_json(observation)}</pre></div>')
+            visibility = (
+                "Appended to model context"
+                if turn.get("observation_in_context")
+                else "Not appended to model context"
+            )
+            blocks.append(
+                f'<div class="kg-block kg-tool{" kg-error" if failed else ""}">'
+                f'<strong>Tool response</strong><div class="kg-meta">{visibility}</div>'
+                f"<pre>{_json(observation)}</pre></div>"
+            )
         else:
             blocks.append('<div class="kg-meta">No tool response was recorded for this turn.</div>')
-        blocks.append('</section>')
-    blocks.append('</div></article>')
-    return '<div class="kg-inspection">' + ''.join(blocks) + '</div>'
+        blocks.append("</section>")
+    blocks.append("</div></article>")
+    return '<div class="kg-inspection">' + "".join(blocks) + "</div>"
 
 
 def render_traces_html(traces, *, label="Model", count=3, offset=0, tokenizer=None):
     """Show an unranked slice; optional tokenizer renders the full initial input."""
     if count < 1 or offset < 0:
         raise ValueError("Inspection count must be positive and offset nonnegative")
-    selected = traces[offset:offset + count]
+    selected = traces[offset : offset + count]
     if not selected:
-        return STYLE + '<div class="kg-inspection"><p>No recorded model trajectories in this selection. No inference was run by this inspection cell.</p></div>'
+        return (
+            STYLE
+            + '<div class="kg-inspection"><p>No recorded model trajectories in this selection. No inference was run by this inspection cell.</p></div>'
+        )
     codec = None
     if tokenizer is not None:
         from .rollouts import QwenChatCodec
+
         codec = QwenChatCodec(tokenizer)
     cards = []
     for trace in selected:
         rendered = codec.decode(codec.prompt_ids(trace["prompt"])) if codec is not None else None
         cards.append(render_episode_html(trace, label=label, rendered_prompt=rendered))
-    caption = (f'<div class="kg-inspection"><p>{_text(label)}: recorded episodes '
-               f'{offset + 1}–{offset + len(selected)} of {len(traces)}. '
-               'Shown in stored order; no success-based selection or extra inference.</p></div>')
-    return STYLE + caption + ''.join(cards)
+    caption = (
+        f'<div class="kg-inspection"><p>{_text(label)}: recorded episodes '
+        f"{offset + 1}–{offset + len(selected)} of {len(traces)}. "
+        "Shown in stored order; no success-based selection or extra inference.</p></div>"
+    )
+    return STYLE + caption + "".join(cards)

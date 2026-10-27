@@ -2,3 +2,8 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .venv/
+
+# Local experiments and downloaded results
+artifacts/
+*.zip
+.ipynb_checkpoints/

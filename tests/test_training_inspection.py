@@ -8,17 +8,36 @@ from kg_rlvr.training.inspection import render_episode_html, render_traces_html
 
 
 def trace(task_id="unit_1", reward=0):
-    return {"task_id": task_id, "question": "Which city?", "hop_count": 2,
-            "start_entity": "r", "submitted_answer": "c", "reward": reward,
-            "tool_calls": 2, "termination_reason": "submitted",
-            "prompt": [{"role": "system", "content": "unit instructions"},
-                       {"role": "user", "content": "unit question"}],
-            "turns": [{"raw_assistant": '<tool_call>{"name":"get_neighbors"}</tool_call>',
-                       "model_tokens": 12, "tool_call": {"name": "get_neighbors", "arguments": {"entity_id": "r"}},
-                       "observation": {"ok": True, "entities": [{"id": "c"}]}, "observation_in_context": True},
-                      {"raw_assistant": '<tool_call>{"name":"submit_answer"}</tool_call>',
-                       "model_tokens": 9, "tool_call": {"name": "submit_answer", "arguments": {"entity_id": "c"}},
-                       "observation": {"ok": True, "submitted": "c"}, "observation_in_context": False}]}
+    return {
+        "task_id": task_id,
+        "question": "Which city?",
+        "hop_count": 2,
+        "start_entity": "r",
+        "submitted_answer": "c",
+        "reward": reward,
+        "tool_calls": 2,
+        "termination_reason": "submitted",
+        "prompt": [
+            {"role": "system", "content": "unit instructions"},
+            {"role": "user", "content": "unit question"},
+        ],
+        "turns": [
+            {
+                "raw_assistant": '<tool_call>{"name":"get_neighbors"}</tool_call>',
+                "model_tokens": 12,
+                "tool_call": {"name": "get_neighbors", "arguments": {"entity_id": "r"}},
+                "observation": {"ok": True, "entities": [{"id": "c"}]},
+                "observation_in_context": True,
+            },
+            {
+                "raw_assistant": '<tool_call>{"name":"submit_answer"}</tool_call>',
+                "model_tokens": 9,
+                "tool_call": {"name": "submit_answer", "arguments": {"entity_id": "c"}},
+                "observation": {"ok": True, "submitted": "c"},
+                "observation_in_context": False,
+            },
+        ],
+    }
 
 
 def test_inspection_preserves_turn_order_and_escapes_all_untrusted_text():
