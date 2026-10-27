@@ -19,17 +19,13 @@ def read_questions(directory):
     ]
 
 
-def public_prompt(graph, record, max_tool_calls=8, single_answer_only=False):
-    """Explicit allowlist. Deliberately differs from the complete-set EDA prompt."""
+def public_prompt(graph, record, max_tool_calls=8):
+    """Only the question and starting entity enter the model-visible input."""
     entity = graph.get_entity(record["start_entity"])
     instruction = (
         "Navigate the fictional research graph to answer the question. Submit ONE correct entity ID using submit_answer; "
-        + (
-            "The question has one correct answer. "
-            if single_answer_only
-            else "If several answers exist, any one is accepted. "
-        )
-        + "Use only discovered entities, beginning with the starting ID. "
+        "The question has one correct answer. "
+        "Use only discovered entities, beginning with the starting ID. "
         "Identify the entity type requested by the question. Follow every relationship needed to answer the whole question; "
         "a discovered neighbor may be an intermediate entity that requires further traversal. "
         "Before submitting, check that the selected entity's type and the traversed relationships satisfy the question. "
@@ -55,39 +51,30 @@ def prompt_key(prompt):
 
 
 class TaskStore:
-    def __init__(self, graph, records, max_tool_calls=12, single_answer_only=True):
+    def __init__(self, graph, records, max_tool_calls=12):
         self.graph = graph
-        self.single_answer_only = single_answer_only
+        self._records = {q["id"]: copy.deepcopy(q) for q in records}
+        self._prompts = {
+            qid: public_prompt(graph, q, max_tool_calls) for qid, q in self._records.items()
+        }
+        self._prompt_lookup = {}
+        for qid in sorted(self._prompts):
+            self._prompt_lookup.setdefault(prompt_key(self._prompts[qid]), qid)
         self.selection_statistics = []
         for split in ("train", "test"):
             for hop in (1, 2, 3, 4):
-                source = [q for q in records if q["split"] == split and q["hop_count"] == hop]
-                eligible = [
-                    q for q in source if not single_answer_only or len(q["answer_ids"]) == 1
-                ]
+                rows = [q for q in records if q["split"] == split and q["hop_count"] == hop]
                 keys = {
-                    (q["start_entity"], tuple(q["relation_path"]), tuple(sorted(q["answer_ids"])))
-                    for q in eligible
+                    (q["start_entity"], tuple(q["relation_path"]), q["answer_id"]) for q in rows
                 }
                 self.selection_statistics.append(
                     {
                         "split": split,
                         "hop_count": hop,
-                        "source_questions": len(source),
-                        "eligible_questions": len(eligible),
-                        "removed_questions": len(source) - len(eligible),
-                        "eligible_unique_instances": len(keys),
+                        "questions": len(rows),
+                        "unique_instances": len(keys),
                     }
                 )
-        active = [q for q in records if not single_answer_only or len(q["answer_ids"]) == 1]
-        self._records = {q["id"]: copy.deepcopy(q) for q in active}
-        self._prompts = {
-            qid: public_prompt(graph, q, max_tool_calls, single_answer_only)
-            for qid, q in self._records.items()
-        }
-        self._prompt_lookup = {}
-        for qid in sorted(self._prompts):
-            self._prompt_lookup.setdefault(prompt_key(self._prompts[qid]), qid)
 
     def prompt(self, task_id):
         return copy.deepcopy(self._prompts[task_id])
@@ -99,10 +86,10 @@ class TaskStore:
         return self._prompt_lookup[prompt_key(prompt)]
 
     def reward(self, task_id, submitted_answer):
-        return float(submitted_answer in self._records[task_id]["answer_ids"])
+        return float(submitted_answer == self._records[task_id]["answer_id"])
 
     def verify_episode(self, task_id, submitted_answer, tool_events):
-        return score_episode(submitted_answer, self._records[task_id]["answer_ids"], tool_events)
+        return score_episode(submitted_answer, self._records[task_id]["answer_id"], tool_events)
 
     def select(
         self, split, hops=(1, 2, 3), count=None, seed=41, unique_instances=True, balanced=False
@@ -116,7 +103,7 @@ class TaskStore:
         if unique_instances:
             grouped = {}
             for q in rows:
-                key = (q["start_entity"], tuple(q["relation_path"]), tuple(sorted(q["answer_ids"])))
+                key = (q["start_entity"], tuple(q["relation_path"]), q["answer_id"])
                 grouped.setdefault(key, q)
             rows = list(grouped.values())
         rng = random.Random(seed)
@@ -133,16 +120,11 @@ class TaskStore:
                 raise ValueError("Example counts must be positive")
             rows = rows[:count]
         if not rows:
-            raise ValueError(f"No eligible tasks for split={split}, hops={hops}")
+            raise ValueError(f"No tasks for split={split}, hops={hops}")
         return [q["id"] for q in rows]
 
 
-def load_tasks(data_root, max_tool_calls=12, single_answer_only=True):
+def load_tasks(data_root, max_tool_calls=12):
     root = Path(data_root)
     graph = GraphIndex.load(root / "graph")
-    records = read_questions(root)
-    wording_path = root / "metadata/single_answer_questions.json"
-    wording = json.loads(wording_path.read_text()) if wording_path.exists() else {}
-    if single_answer_only:
-        records = [{**q, "question": wording.get(q["id"], q["question"])} for q in records]
-    return graph, TaskStore(graph, records, max_tool_calls, single_answer_only)
+    return graph, TaskStore(graph, read_questions(root), max_tool_calls)

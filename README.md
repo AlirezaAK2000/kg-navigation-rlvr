@@ -77,7 +77,7 @@ Only asserted graph facts are traversed; no reasoner runs during an episode.
 The deterministic verifier scores the complete episode:
 
 ```python
-return_ = float(submitted_answer in gold_answer_ids) + 0.2 * answer_retrieved
+return_ = float(submitted_answer == gold_answer_id) + 0.2 * answer_retrieved
 ```
 
 `answer_retrieved` is true when a successful executed neighbor response contains
@@ -85,8 +85,9 @@ the gold entity. This bonus is awarded once. Returns range from 0 to 1.2; **test
 accuracy measures correct submission only**. Finding an answer without submitting
 it earns at most 0.2. Gold answers and reward feedback stay outside tool observations.
 
-The tutorial selects single-answer questions and merges paraphrases of the same
-query instance. Train and test share the graph, but query instances are separated.
+Every saved question has one correct answer, stored as `answer_id`. Paraphrases
+of the same query instance are merged. Train and test share the graph, but query
+instances are separated.
 SFT and GRPO reserve different training instances; test questions never enter the
 optimizer. One answer can still be reachable through multiple graph branches.
 
@@ -101,9 +102,8 @@ of this tutorial.
 
 | Statistic | Train | Test |
 | --- | ---: | ---: |
-| Saved question rows | 2,667 | 1,067 |
-| Single-answer question rows | 2,449 | 983 |
-| Unique single-answer instances, hops 1–4 | 1,226 | 493 |
+| Saved question rows | 2,449 | 983 |
+| Unique query instances, hops 1–4 | 1,226 | 493 |
 
 The graph contains **2,000 entities and 5,000 stored navigation facts**. Its entities
 are 700 researchers, 400 publications, 300 projects, 200 cities, 150 fields,
@@ -113,7 +113,7 @@ included in the 5,000-fact count.
 Training uses hops 1–3: 933 instances are available before reserving SFT data.
 The recorded configuration reserves **100 SFT instances**, leaving **833 for GRPO**.
 All four models use the same 30 test questions across hops 1–4. Set
-`TEST_EVAL_SIZE=None` to evaluate all 493 eligible test instances.
+`TEST_EVAL_SIZE=None` to evaluate all 493 unique test instances.
 
 ## Reproduce the experiment
 
@@ -192,10 +192,11 @@ It reads the saved data without modifying it and requires no model download.
 
 Replace `DATA_ROOT` with a dataset following the saved Turtle and JSONL formats.
 Turtle must provide entity IDs, labels, types, and relation domain/range and inverse
-metadata. QA records provide question text, starting entity, answer IDs, hop count,
+metadata. Each QA record provides question text, a starting entity, one
+`answer_id`, hop count,
 relation program and witness paths. Witness paths are used for SFT demonstrations;
-only the question and starting entity enter model prompts. The optional saved
-singular wording map is used for this dataset's question phrasing.
+only the question and starting entity enter model prompts. Question wording is
+stored directly in the train/test JSONL files.
 
 The main files to adapt are:
 

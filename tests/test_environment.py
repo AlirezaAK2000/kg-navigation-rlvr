@@ -16,8 +16,8 @@ def test_saved_graph_data_and_split_separation(tasks):
     train, test = store.select("train", [1, 2, 3, 4]), store.select("test", [1, 2, 3, 4])
     assert set(train).isdisjoint(test)
     assert len(store.select("train")) == 933 and len(test) == 493
-    assert all(len(store.record(q)["answer_ids"]) == 1 for q in train + test)
-    key = lambda q: (q["start_entity"], tuple(q["relation_path"]), tuple(q["answer_ids"]))
+    assert all(isinstance(store.record(q)["answer_id"], str) for q in train + test)
+    key = lambda q: (q["start_entity"], tuple(q["relation_path"]), q["answer_id"])
     assert {key(store.record(q)) for q in train}.isdisjoint(key(store.record(q)) for q in test)
 
 
@@ -25,9 +25,7 @@ def test_prompt_contains_only_public_inputs(tasks):
     graph, store = tasks
     record = copy.deepcopy(store.record(store.select("train", [2], count=1)[0]))
     original = public_prompt(graph, record)
-    record.update(
-        answer_ids=["PRIVATE"], relation_path=["PRIVATE"], gold_entity_paths=[["PRIVATE"]]
-    )
+    record.update(answer_id="PRIVATE", relation_path=["PRIVATE"], gold_entity_paths=[["PRIVATE"]])
     assert public_prompt(graph, record) == original
     assert "PRIVATE" not in json.dumps(original)
 
@@ -36,18 +34,18 @@ def test_actual_traversal_requires_discovery_and_explicit_submission(tasks):
     graph, store = tasks
     q = store.record(store.select("train", [2], count=1)[0])
     env = GraphEnvironment(graph, q["start_entity"])
-    assert not env.step("submit_answer", {"entity_id": q["answer_ids"][0]})["ok"]
+    assert not env.step("submit_answer", {"entity_id": q["answer_id"]})["ok"]
     path = q["gold_entity_paths"][0]
     for head, relation, tail in zip(path, q["relation_path"], path[1:]):
         result = env.step("get_neighbors", {"entity_id": head, "relation_id": relation})
         assert result["ok"] and tail in [e["id"] for e in result["entities"]]
-    score = score_episode(None, q["answer_ids"], env.trajectory)
+    score = score_episode(None, q["answer_id"], env.trajectory)
     assert score["answer_correct"] == 0 and score["training_reward"] == 0.2
     result = env.step("submit_answer", {"entity_id": path[-1]})
     assert result["ok"] and env.done
-    assert "reward" not in result and "answer_ids" not in result
+    assert "reward" not in result and "answer_id" not in result
     assert (
-        score_episode(env.submitted_answer, q["answer_ids"], env.trajectory)["training_reward"]
+        score_episode(env.submitted_answer, q["answer_id"], env.trajectory)["training_reward"]
         == 1.2
     )
     env.reset()

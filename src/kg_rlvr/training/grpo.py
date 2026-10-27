@@ -364,7 +364,7 @@ def build_trainer(
         (diagnostics_dir / "exposure_schedule.json").write_text(json.dumps(plan, indent=2) + "\n")
     dataset = Dataset.from_list(
         [
-            {"prompt": store.prompt(qid), "answer_ids": store.record(qid)["answer_ids"]}
+            {"prompt": store.prompt(qid), "answer_id": store.record(qid)["answer_id"]}
             for qid in scheduled_ids
         ]
     )
@@ -437,7 +437,6 @@ def training_manifest(
     r=8,
     alpha=16,
     hop_weights=None,
-    single_answer_only=False,
     supervised_warm_start=None,
 ):
     return {
@@ -458,8 +457,6 @@ def training_manifest(
         "loss_type": "grpo",
         "versions": dependency_versions(),
         "reward_spec": dict(REWARD_SPEC),
-        "single_answer_only": single_answer_only,
-        "wording_version": "single_v1" if single_answer_only else "source",
         "supervised_warm_start": supervised_warm_start,
         "training_exposure": {
             "algorithm": "weighted_deficit_v1",

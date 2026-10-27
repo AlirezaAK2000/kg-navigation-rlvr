@@ -209,7 +209,7 @@ def run_episode(store, task_id, codec, sample_turn, limits, on_turn=None):
         "turns": turns,
         "tool_events": copy.deepcopy(env.trajectory),
         "submitted_answer": env.submitted_answer,
-        "gold_answer_ids": record["answer_ids"],
+        "gold_answer_id": record["answer_id"],
         "reward": reward,
         **verified,
         "tool_calls": env.calls,

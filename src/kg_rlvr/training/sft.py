@@ -15,13 +15,11 @@ def build_demonstration(store, task_id, limits):
     record = store.record(task_id)
     if record["split"] != "train":
         raise ValueError("SFT demonstrations must come only from the source training split")
-    if len(record["answer_ids"]) != 1:
-        raise ValueError("SFT demonstrations require one complete gold answer")
     path, relations = record["gold_entity_paths"][0], record["relation_path"]
     if (
         len(path) != len(relations) + 1
         or path[0] != record["start_entity"]
-        or path[-1] not in record["answer_ids"]
+        or path[-1] != record["answer_id"]
     ):
         raise ValueError("Invalid supervised witness path")
     env = GraphEnvironment(store.graph, record["start_entity"], limits)

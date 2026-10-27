@@ -25,7 +25,7 @@ def task_instance_key(record):
     return (
         record["start_entity"],
         tuple(record["relation_path"]),
-        tuple(sorted(record["answer_ids"])),
+        record["answer_id"],
     )
 
 

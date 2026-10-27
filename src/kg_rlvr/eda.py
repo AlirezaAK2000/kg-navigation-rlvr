@@ -38,11 +38,10 @@ def question_tables(graph, data_root):
         rows.append(
             {
                 **record,
-                "answer_count": len(record["answer_ids"]),
                 "instance": (
                     record["start_entity"],
                     tuple(record["relation_path"]),
-                    tuple(sorted(record["answer_ids"])),
+                    record["answer_id"],
                 ),
                 "start_type": graph.entities[record["start_entity"]]["type"],
                 "relation_options": record["difficulty"]["relation_options_mean"],
@@ -50,9 +49,8 @@ def question_tables(graph, data_root):
             }
         )
     source = pd.DataFrame(rows)
-    eligible = source[source.answer_count == 1].copy()
-    unique = eligible.drop_duplicates(["split", "instance"]).copy()
-    return source, eligible, unique
+    unique = source.drop_duplicates(["split", "instance"]).copy()
+    return source, unique
 
 
 def graph_statistics(graph):
@@ -267,7 +265,7 @@ def composition_figure(graph):
     return fig
 
 
-def questions_figure(source, eligible, unique):
+def questions_figure(source, unique):
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(14, 7.5))
     fig.subplots_adjust(left=0.07, right=0.97, bottom=0.17, top=0.78, wspace=0.28)
     fig.suptitle(
@@ -276,7 +274,7 @@ def questions_figure(source, eligible, unique):
     fig.text(
         0.5,
         0.90,
-        "Single-answer filtering is followed by paraphrase deduplication",
+        "Paraphrases share a starting entity, relation program and answer",
         ha="center",
         color="#64748B",
     )
@@ -289,14 +287,14 @@ def questions_figure(source, eligible, unique):
     ax0.set(title="Source questions by hop", ylabel="Question rows")
     ax0.set_ylim(0, counts.max().max() * 1.20)
     ax0.legend(frameon=False)
-    stages = [source, eligible, unique]
-    labels = ["Source\nquestions", "Single-answer\nquestions", "Unique query\ninstances"]
+    stages = [source, unique]
+    labels = ["Saved\nquestions", "Unique query\ninstances"]
     for offset, split, color in [(-0.19, "train", "#0D9488"), (0.19, "test", "#3B82F6")]:
         values = [int((frame.split == split).sum()) for frame in stages]
-        bars = ax1.bar(np.arange(3) + offset, values, 0.34, color=color, label=split.title())
+        bars = ax1.bar(np.arange(2) + offset, values, 0.34, color=color, label=split.title())
         ax1.bar_label(bars, labels=[f"{v:,}" for v in values], padding=4, fontsize=11)
-    ax1.set_xticks(range(3), labels)
-    ax1.set(title="Eligibility and deduplication", ylabel="Count")
+    ax1.set_xticks(range(2), labels)
+    ax1.set(title="Paraphrase deduplication", ylabel="Count")
     ax1.set_ylim(0, len(source[source.split == "train"]) * 1.20)
     for ax in (ax0, ax1):
         style_axis(ax, "y")

@@ -6,7 +6,7 @@ use the same saved graph, prompt, tool limits and fixed test questions.
 | File | Responsibility |
 | --- | --- |
 | `rdf.py`, `graph_index.py` | Read the saved ontology and navigate asserted RDF facts |
-| `data.py` | Load questions, select single-answer instances and build public prompts |
+| `data.py` | Load saved questions, merge paraphrases and build public prompts |
 | `training/environment.py` | Maintain discovery, execute tools and end episodes |
 | `training/rewards.py` | Score executed submissions and successful retrievals |
 | `training/sampling.py` | Reserve separate SFT/GRPO instances and schedule hop exposure |

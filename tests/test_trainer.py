@@ -50,7 +50,7 @@ def test_standard_rewards_reach_grpo_and_zero_variance_does_not_abort(
 
     def scripted_rollout(prompts, trainer):
         answers = [
-            store.record(store.resolve_prompt(p))["answer_ids"][0]
+            store.record(store.resolve_prompt(p))["answer_id"]
             if all_correct or i % 2 == 0
             else None
             for i, p in enumerate(prompts)
