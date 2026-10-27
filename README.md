@@ -152,8 +152,21 @@ sample 20 question groups, with 4/8/8 groups across the training hops.
 of updates. Identical rewards within a group give zero relative advantages and do
 not stop training. Learning rates are example settings, not tuned optima.
 
+## Results
+
 The saved run reports 4/30 correct for vanilla, 16/30 for SFT, 15/30 for GRPO only,
 and 20/30 for SFT + GRPO. These are results of **one seed and 30 questions**.
+
+![Overall and per-hop test accuracy for all four model variants](docs/assets/test_accuracy.png)
+
+All variants answer the same test questions, with 7–8 questions per hop category.
+
+![Total episodic return during SFT + GRPO and GRPO-only training](docs/assets/rl_episodic_return.png)
+
+Returns combine correctness and the weighted retrieval bonus, averaged over
+non-overlapping five-step windows. Shading shows 95% question-cluster bootstrap
+intervals within this run; it does not measure variation across training seeds.
+Both figures are the saved outputs from the end of Notebook 2.
 
 ## Inspect the data locally
 
