@@ -168,6 +168,13 @@ non-overlapping five-step windows. Shading shows 95% question-cluster bootstrap
 intervals within this run; it does not measure variation across training seeds.
 Both figures are the saved outputs from the end of Notebook 2.
 
+**SFT + GRPO achieved the highest test accuracy in this run (66.7%), compared with
+53.3% for SFT alone, 50.0% for GRPO only, and 13.3% for the vanilla model. Combining
+supervised demonstrations with verifiable-reward training produced the best
+observed performance on this task. However, evaluation used only 30 questions and
+one seed; a larger test set and repeated runs are needed to establish whether this
+advantage is consistent.**
+
 ## Inspect the data locally
 
 After completing project setup, run these commands from the repository root:
