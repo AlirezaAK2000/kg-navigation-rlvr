@@ -2,7 +2,7 @@
 
 **Teaching language models to reason over structured knowledge through verifiable graph traversal.**
 This project provides an end-to-end framework for training and evaluating
-language models on multi-hop knowledge-graph question answering with
+language models on multi-hop knowledge-graph question answering using
 **reinforcement learning with verifiable rewards (RLVR)**. It brings together an
 executable tool environment, deterministic answer verification, supervised and
 reinforcement-learning experiments, and detailed trajectory analysis. Reproducible
@@ -22,16 +22,16 @@ several relations rather than looking up one fact. The challenge is to translate
 the question into the right sequence of relations, choose among intermediate
 entities, and recognize when the requested answer has been reached. Graph queries
 can execute a known sequence, but the sequence is not provided to the agent here.
-We use a language model to interpret the question and choose tool calls, while
-RDFLib executes those calls against the graph. The model must learn both where to
-explore and when to stop and submit an answer.
+We use a language model to interpret the question and select tool calls step by
+step to retrieve the information needed to answer it. The model must learn both
+where to explore and when to stop and submit an answer.
 
 ### Input and multi-hop traversal
 
-An episode is one attempt to answer a question. It begins with a
-**natural-language question and a starting entity ID**, including that entity's
-name and type. The agent must return the **single correct answer entity ID**
-through `submit_answer`.
+An episode is an attempt to answer a question. Its input consists of a
+**natural-language question and a starting entity (graph node)**, identified by
+its ID, name and type. The agent must return the **ID of the single correct
+answer entity** through `submit_answer`.
 
 **One hop means traversing one graph relation from an entity to a neighbor.**
 A multi-hop question requires a sequence of two or more such traversals. For
@@ -94,11 +94,12 @@ Each assistant turn emits exactly one JSON tool call:
 
 Stored relations have a direction. For example,
 `researcher --works_at--> university` supports finding a researcher's university.
-Some questions need to follow that same fact in reverse to find researchers at
-a given university. For relations that permit this, `get_relations` also exposes
-an operation prefixed with `inv:`, such as `inv:works_at`. Calling `get_neighbors` on the university with
-that operation returns researchers who work there. This follows existing facts
-backward without creating new facts or running an inference engine.
+Answering some questions requires following that same fact in reverse to find
+researchers at a given university. For relations that permit this,
+`get_relations` also exposes an operation prefixed with `inv:`, such as
+`inv:works_at`. Calling `get_neighbors` on the university with that operation
+returns researchers who work there. This follows existing facts backward without
+creating new facts or running an inference engine.
 
 ### Verifiable reward and task assumptions
 
@@ -109,8 +110,8 @@ with the **gold answer (the correct entity ID stored with the question)**:
 return_ = float(submitted_answer == gold_answer_id) + 0.2 * answer_retrieved
 ```
 
-`answer_retrieved` is true if the gold answer appears in a successful, executed
-`get_neighbors` response. That retrieval bonus is awarded once per episode.
+`answer_retrieved` is true if a successful `get_neighbors` call returns the gold
+answer. That retrieval bonus is awarded once per episode.
 The total return ranges from **0 to 1.2**. Merely reaching the answer earns at most
 0.2, while the correctness reward requires explicitly submitting its ID.
 **Test accuracy measures correct submission only.**
@@ -129,11 +130,12 @@ The task uses the following assumptions and simplifications:
 - **One wording per underlying query when sampling:** several saved questions
   can express the same query in different words. For example, “Where does
   Dr. Maya Chen work?” and “Which university employs Dr. Maya Chen?” can share
-  the same starting researcher, `works_at` relation and answer university.
+  the same researcher as the starting entity, the `works_at` relation and the
+  same university as the answer.
   Before selecting experiment questions, the code groups records with the same
   starting entity, relation sequence and answer ID, then keeps one representative
   wording from each group. This prevents paraphrases of one query from counting
-  as separate training or evaluation examples.
+  as separate examples during training or evaluation.
 
 ## Saved dataset and ontology
 
@@ -149,7 +151,7 @@ individual facts about named people or places.
 *Figure 1. The ontology defines the graph's entity classes and directed relations.
 Class counts show how many entities of each type occur in the saved graph.*
 
-The entities comprise 700 researchers, 400 publications, 300 projects, 200 cities,
+The graph contains 700 researchers, 400 publications, 300 projects, 200 cities,
 150 fields, 100 universities, 100 funders and 50 countries. The ontology, labels
 and facts are stored together in `data/graph/graph.ttl`, which can be opened in
 Protégé and queried through RDFLib. Schema and label triples are excluded from
@@ -168,20 +170,20 @@ questions.
 
 ### Data selected for the recorded experiment
 
-Training uses only **one-, two- and three-hop questions**. This leaves **933
-distinct training queries** from the 1,226 available across all four hop counts.
+Training uses only **one-, two- and three-hop questions**. Of the 1,226 distinct
+training queries across all four hop counts, **933 meet this criterion**.
 The notebook reserves 100 for SFT, leaving a separate pool of 833 for GRPO.
 The table distinguishes these available pools from the examples actually used:
 
 | Phase | Available query pool | Questions or trajectories used | Hop distribution |
 | --- | --- | --- | --- |
-| SFT | 933 training queries with 1–3 hops, before reservation | 100 question demonstrations, each used for one epoch | 20 one-hop, 40 two-hop, 40 three-hop |
+| SFT | 933 training queries with 1–3 hops, before reservation | 100 demonstrations, each corresponding to one question, used for one epoch | 20 one-hop, 40 two-hop, 40 three-hop |
 | GRPO only | 833 training queries remaining after SFT reservation | 20 question groups × 8 trajectories = 160 training trajectories | 4 one-hop, 8 two-hop, 8 three-hop groups |
 | SFT + GRPO, RL stage | The same 833-query GRPO pool | 20 question groups × 8 trajectories = 160 training trajectories | 4 one-hop, 8 two-hop, 8 three-hop groups |
 | Evaluation of every variant | 493 distinct test queries with 1–4 hops | The same fixed sample of 30 questions for each variant | 8 one-hop, 8 two-hop, 7 three-hop, 7 four-hop |
 
 SFT and GRPO use disjoint underlying queries, and the test sample is separate
-from both. GRPO samples from its pool during training rather than traversing all
+from both. GRPO samples from its pool during training rather than using all
 833 queries in the recorded run. Four-hop test questions assess longer chains
 than those used for training. Set `TEST_EVAL_SIZE=None` to evaluate all 493
 distinct test queries.
@@ -233,9 +235,9 @@ open-weight models with their corresponding chat templates and tool-call formats
 | GRPO question exposure | 20% one-hop, 40% two-hop, 40% three-hop |
 | Episode budget, for every variant | 12 tool calls, including submission and invalid calls |
 
-With this configuration, eight trajectories of one question contribute to each
-GRPO update. Twenty optimizer steps sample 20 question groups: 4 one-hop,
-8 two-hop and 8 three-hop groups. `MAX_TRAIN_EXAMPLES` caps the available question
+With this configuration, eight trajectories for one question contribute to each
+GRPO update. Over 20 optimizer steps, the model processes 20 question groups:
+4 one-hop, 8 two-hop and 8 three-hop groups. `MAX_TRAIN_EXAMPLES` caps the available question
 pool rather than the number of updates. If every trajectory in a group receives
 the same reward, its relative advantages are zero, so that group contributes no
 reward-driven policy gradient. Training continues with subsequent groups.
@@ -245,15 +247,16 @@ The learning rates are example settings rather than tuned optima.
 
 **Figure 3** compares overall test accuracy and accuracy at each hop count for
 all four variants. On the same 30 questions, the saved run reports **4 correct
-for vanilla, 16 for SFT, 15 for GRPO only and 20 for SFT + GRPO**. The per-hop
-breakdown makes it possible to see whether a gain extends to longer relation
+answers for vanilla, 16 for SFT, 15 for GRPO only and 20 for SFT + GRPO**.
+The per-hop breakdown makes it possible to see whether a gain extends to longer relation
 chains, rather than coming only from simpler one-hop questions. Each category
 contains 7–8 questions, so these are results of **one seed and a small test sample**.
 
 ![Figure 3: Overall and per-hop test accuracy for all four variants](docs/assets/test_accuracy.png)
 
 *Figure 3. Accuracy measures correct answer submission on the shared test sample.
-The grouped bars show overall performance and the breakdown by relation-chain length.*
+The grouped bars show overall performance and the breakdown by relation-chain
+length.*
 
 **Figure 4** compares total episodic return during the two GRPO training runs.
 It shows the reward received by sampled trajectories as training proceeds,
@@ -347,9 +350,10 @@ It reads the saved data without modifying it and requires no model download.
 
 ## Use your own graph
 
-Replace `DATA_ROOT` with a dataset following the saved Turtle and JSONL formats.
-Turtle must provide entity IDs, labels, types, and relation domain/range and inverse
-metadata. Each QA record provides question text, a starting entity, one
+Set `DATA_ROOT` to the directory containing a dataset that follows the saved
+Turtle and JSONL formats. The Turtle file must provide entity IDs, labels and
+types, along with relation domain, range and inverse-traversal metadata.
+Each QA record provides question text, a starting entity, one
 `answer_id`, hop count, relation program and witness paths. A witness path is a
 recorded sequence of entities that reaches the answer through those relations.
 These paths provide SFT demonstrations. Only the question and starting entity
