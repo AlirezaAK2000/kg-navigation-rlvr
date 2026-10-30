@@ -9,6 +9,8 @@ reinforcement-learning experiments, and detailed trajectory analysis. Reproducib
 notebooks compare how demonstrations and reward feedback affect an agent's
 ability to explore the graph and submit correct answers.
 
+[Watch the video tutorial on YouTube](https://youtu.be/3DPmP_FSbZA)
+
 [Explore the dataset](notebooks/01_dataset_eda.ipynb) ·
 [Run the experiment](notebooks/02_grpo_training_kaggle.ipynb) ·
 [View results](#results) · [Setup and usage](#setup-and-usage) ·
